@@ -1,0 +1,6 @@
+{
+  "identifyString": "ultisidebar",
+  "name": "UltiSideBar",
+  "shortDescription": "动态计分板侧边栏，支持PlaceholderAPI变量、玩家偏好持久化、内容缓存和热重载。",
+  "categoryId": 1
+}
