@@ -21,7 +21,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 @Table("sidebar_preferences")
-public class SideBarPreference extends BaseDataEntity<Long> {
+public class SideBarPreference extends BaseDataEntity<String> {
 
     /**
      * Player UUID string.
