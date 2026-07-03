@@ -260,6 +260,28 @@ class SideBarServiceTest {
                 verify(player).setScoreboard(mainScoreboard);
             }
         }
+
+        @Test
+        @DisplayName("Should update canonical duplicate preference row by id")
+        void updatesCanonicalDuplicatePreferenceRow() {
+            SideBarPreference laterPreference = preference("pref-b", true);
+            SideBarPreference canonicalPreference = preference("pref-a", true);
+            when(query.list()).thenReturn(Arrays.asList(laterPreference, canonicalPreference));
+
+            try (MockedStatic<Bukkit> bukkitMock = mockStatic(Bukkit.class)) {
+                ScoreboardManager scoreboardManager = mock(ScoreboardManager.class);
+                Scoreboard mainScoreboard = mock(Scoreboard.class);
+
+                bukkitMock.when(Bukkit::getScoreboardManager).thenReturn(scoreboardManager);
+                when(scoreboardManager.getMainScoreboard()).thenReturn(mainScoreboard);
+
+                service.disableSidebar(player);
+
+                verify(dataOperator).update("enabled", false, "pref-a");
+                verify(dataOperator, never()).update("enabled", false, "pref-b");
+                verify(player).setScoreboard(mainScoreboard);
+            }
+        }
     }
 
     // ==================== toggleSidebar ====================
@@ -372,6 +394,18 @@ class SideBarServiceTest {
             boolean result = service.isSidebarEnabled(player);
 
             assertThat(result).isFalse();
+        }
+
+        @Test
+        @DisplayName("Should read canonical duplicate preference row by id")
+        void readsCanonicalDuplicatePreferenceRow() {
+            SideBarPreference laterPreference = preference("pref-b", false);
+            SideBarPreference canonicalPreference = preference("pref-a", true);
+            when(query.list()).thenReturn(Arrays.asList(laterPreference, canonicalPreference));
+
+            boolean result = service.isSidebarEnabled(player);
+
+            assertThat(result).isTrue();
         }
 
         @Test
@@ -614,5 +648,11 @@ class SideBarServiceTest {
                 verify(player).setScoreboard(scoreboard);
             }
         }
+    }
+
+    private SideBarPreference preference(String id, boolean enabled) {
+        SideBarPreference preference = new SideBarPreference(playerUuid.toString(), enabled);
+        preference.setId(id);
+        return preference;
     }
 }

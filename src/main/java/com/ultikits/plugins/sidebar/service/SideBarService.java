@@ -224,8 +224,28 @@ public class SideBarService {
             return config.isDefaultEnabled();
         }
 
-        Boolean enabled = prefs.get(0).getEnabled();
+        SideBarPreference pref = selectCanonicalPreference(prefs);
+        if (pref == null) {
+            return config.isDefaultEnabled();
+        }
+
+        Boolean enabled = pref.getEnabled();
         return enabled != null ? enabled : config.isDefaultEnabled();
+    }
+
+    /**
+     * Select a deterministic row when duplicate preference rows exist for a player.
+     * <p>
+     * The ORM does not guarantee query order here, so using list order makes duplicate
+     * rows first-row-wins and can flip sidebar state between reads. Prefer the stable
+     * entity id as the canonical row without deleting or migrating duplicate rows.
+     * </p>
+     */
+    private SideBarPreference selectCanonicalPreference(List<SideBarPreference> preferences) {
+        return preferences.stream()
+            .filter(Objects::nonNull)
+            .min(Comparator.comparing(SideBarPreference::getId, Comparator.nullsLast(String::compareTo)))
+            .orElse(null);
     }
     
     /**
@@ -242,9 +262,11 @@ public class SideBarService {
             SideBarPreference pref = new SideBarPreference(playerUuid.toString(), enabled);
             dataOperator.insert(pref);
         } else {
-            // Update existing record
-            SideBarPreference pref = existing.get(0);
-            dataOperator.update("enabled", enabled, pref.getId());
+            // Update the deterministic canonical row; do not delete or migrate duplicates.
+            SideBarPreference pref = selectCanonicalPreference(existing);
+            if (pref != null) {
+                dataOperator.update("enabled", enabled, pref.getId());
+            }
         }
     }
     
