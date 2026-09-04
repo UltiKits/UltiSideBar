@@ -15,7 +15,7 @@
     <properties>
         <java.version>1.8</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <ultitools.version>6.2.1</ultitools.version>
+        <ultitools.version>6.3.0-SNAPSHOT</ultitools.version>
     </properties>
 
     <repositories>
@@ -26,6 +26,12 @@
         <repository>
             <id>placeholderapi</id>
             <url>https://repo.helpch.at/releases/</url>
+        </repository>
+        <repository>
+            <id>central-snapshots</id>
+            <url>https://central.sonatype.com/repository/maven-snapshots/</url>
+            <releases><enabled>false</enabled></releases>
+            <snapshots><enabled>true</enabled></snapshots>
         </repository>
     </repositories>
 
@@ -139,6 +145,39 @@
                         <goals>
                             <goal>report</goal>
                         </goals>
+                    </execution>
+                    <execution>
+                        <id>check</id>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <configuration>
+                            <!-- This module has no gui package, so this exclude is currently inert.
+                                 Written anyway for comparability across all sixteen module poms; see
+                                 09-CONVENTIONS.md section 5 and 09-GATE-SEMANTICS.md finding F-1 for
+                                 why this belongs here (CheckMojo's own excludes) and not inside
+                                 rule/excludes, which is a no-op for a BUNDLE-element rule. -->
+                            <excludes>
+                                <exclude>**/gui/**</exclude>
+                            </excludes>
+                            <rules>
+                                <rule>
+                                    <element>BUNDLE</element>
+                                    <limits>
+                                        <limit>
+                                            <counter>LINE</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.90</minimum>
+                                        </limit>
+                                        <limit>
+                                            <counter>BRANCH</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.80</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                            </rules>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>

@@ -134,6 +134,103 @@ class SideBarPreferenceTest {
     }
 
     @Nested
+    @DisplayName("EqualsHashCodeContract")
+    class EqualsHashCodeContract {
+
+        @Test
+        @DisplayName("Should not be equal to an instance of an unrelated type")
+        void notEqualToUnrelatedType() {
+            SideBarPreference pref = new SideBarPreference(UUID.randomUUID().toString(), true);
+
+            assertThat(pref).isNotEqualTo("not a preference");
+            assertThat(pref).isNotEqualTo(42);
+        }
+
+        @Test
+        @DisplayName("Should not be equal to a subclass that rejects canEqual")
+        void notEqualWhenCanEqualRejects() {
+            String uuid = UUID.randomUUID().toString();
+            SideBarPreference pref = new SideBarPreference(uuid, true);
+
+            SideBarPreference notCanEqual = new SideBarPreference(uuid, true) {
+                @Override
+                public boolean canEqual(Object other) {
+                    return false;
+                }
+            };
+
+            assertThat(pref).isNotEqualTo(notCanEqual);
+        }
+
+        @Test
+        @DisplayName("Should be equal between two default no-args instances")
+        void defaultInstancesAreEqual() {
+            SideBarPreference pref1 = new SideBarPreference();
+            SideBarPreference pref2 = new SideBarPreference();
+
+            assertThat(pref1).isEqualTo(pref2);
+            assertThat(pref1.hashCode()).isEqualTo(pref2.hashCode());
+        }
+
+        @Test
+        @DisplayName("Should not be equal when one playerUuid is null and the other is set")
+        void nullPlayerUuidVsValue() {
+            SideBarPreference withNullUuid = new SideBarPreference(null, true);
+            SideBarPreference withUuid = new SideBarPreference(UUID.randomUUID().toString(), true);
+
+            assertThat(withNullUuid).isNotEqualTo(withUuid);
+            assertThat(withUuid).isNotEqualTo(withNullUuid);
+        }
+
+        @Test
+        @DisplayName("Should not be equal when one enabled is null and the other is set")
+        void nullEnabledVsValue() {
+            String uuid = UUID.randomUUID().toString();
+            SideBarPreference withNullEnabled = new SideBarPreference(uuid, null);
+            SideBarPreference withEnabled = new SideBarPreference(uuid, true);
+
+            assertThat(withNullEnabled).isNotEqualTo(withEnabled);
+            assertThat(withEnabled).isNotEqualTo(withNullEnabled);
+        }
+
+        @Test
+        @DisplayName("Should be equal when both playerUuid fields are null")
+        void bothPlayerUuidNull() {
+            SideBarPreference pref1 = new SideBarPreference(null, true);
+            SideBarPreference pref2 = new SideBarPreference(null, true);
+
+            assertThat(pref1).isEqualTo(pref2);
+            assertThat(pref1.hashCode()).isEqualTo(pref2.hashCode());
+        }
+
+        @Test
+        @DisplayName("Should be equal when both enabled fields are null")
+        void bothEnabledNull() {
+            String uuid = UUID.randomUUID().toString();
+            SideBarPreference pref1 = new SideBarPreference(uuid, null);
+            SideBarPreference pref2 = new SideBarPreference(uuid, null);
+
+            assertThat(pref1).isEqualTo(pref2);
+            assertThat(pref1.hashCode()).isEqualTo(pref2.hashCode());
+        }
+
+        @Test
+        @DisplayName("Should not be equal when the inherited id differs, even with identical own fields")
+        void notEqualWhenInheritedIdDiffers() {
+            // @EqualsAndHashCode(callSuper = true) means the inherited BaseDataEntity.id must also
+            // match; this is a distinct decision from the playerUuid/enabled comparisons above,
+            // reached only when the superclass's own equals() check fails first.
+            String uuid = UUID.randomUUID().toString();
+            SideBarPreference pref1 = new SideBarPreference(uuid, true);
+            pref1.setId("row-a");
+            SideBarPreference pref2 = new SideBarPreference(uuid, true);
+            pref2.setId("row-b");
+
+            assertThat(pref1).isNotEqualTo(pref2);
+        }
+    }
+
+    @Nested
     @DisplayName("ToString")
     class ToString {
 
