@@ -182,6 +182,8 @@ class SideBarConfigTest {
          */
         private static final String VAULT_DEPENDENT_TOKEN = "%vault_eco_balance_formatted%";
 
+        private final Pattern serverTimeToken = Pattern.compile("%server_time_([^%]+)%");
+
         private String stubResolve(String text) {
             String resolved = text
                     .replace("%player_name%", "Steve")
@@ -189,9 +191,28 @@ class SideBarConfigTest {
                     .replace("%server_max_players%", "100")
                     .replace("%player_world%", "world")
                     .replace("%player_ping%", "42");
-            // PlaceholderAPI's Server expansion accepts an arbitrary SimpleDateFormat pattern as
-            // a dynamic suffix: %server_time_<SimpleDateFormat>%.
-            return resolved.replaceAll("%server_time_[^%]+%", "12:00:00");
+            // PlaceholderAPI's Server expansion accepts a SimpleDateFormat pattern as a dynamic
+            // suffix: %server_time_<SimpleDateFormat>%. A real installation only resolves it if
+            // the suffix is a legal SimpleDateFormat pattern -- an illegal pattern letter (e.g.
+            // %server_time_foo%, "f" is not a pattern letter) makes java.text.SimpleDateFormat's
+            // constructor throw IllegalArgumentException, so the real expansion cannot format it.
+            // Substituting every suffix unconditionally, as an earlier revision of this stub did,
+            // would let this test pass a shipped default that fails to render at runtime.
+            Matcher serverTimeMatcher = serverTimeToken.matcher(resolved);
+            StringBuffer buffer = new StringBuffer();
+            while (serverTimeMatcher.find()) {
+                String suffix = serverTimeMatcher.group(1);
+                String replacement;
+                try {
+                    new java.text.SimpleDateFormat(suffix).format(new java.util.Date());
+                    replacement = "12:00:00";
+                } catch (IllegalArgumentException invalidPattern) {
+                    replacement = serverTimeMatcher.group();
+                }
+                serverTimeMatcher.appendReplacement(buffer, Matcher.quoteReplacement(replacement));
+            }
+            serverTimeMatcher.appendTail(buffer);
+            return buffer.toString();
         }
 
         @Test
@@ -237,6 +258,19 @@ class SideBarConfigTest {
                                 + "path with no leftover token that nothing resolves")
                         .isEmpty();
             }
+        }
+
+        @Test
+        @DisplayName("The stub leaves an invalid server-time pattern unresolved, matching a real installation")
+        void stubResolveRejectsAnInvalidServerTimePattern() {
+            // Regression guard for the earlier permissive regex ("%server_time_[^%]+%" ->
+            // "12:00:00" unconditionally), which would let defaultLinesContainNoTokenThatNothingResolves()
+            // pass a shipped default containing an illegal SimpleDateFormat suffix -- java.text.
+            // SimpleDateFormat throws IllegalArgumentException on an illegal pattern letter such
+            // as 'f' or 'o', so a real PlaceholderAPI Server expansion cannot format
+            // "%server_time_foo%" either. The stub must mirror that failure, not paper over it.
+            assertThat(stubResolve("%server_time_foo%")).isEqualTo("%server_time_foo%");
+            assertThat(stubResolve("&f%server_time_HH:mm:ss%")).isEqualTo("&f12:00:00");
         }
 
         @Test
