@@ -1,5 +1,6 @@
 package com.ultikits.plugins.sidebar.config;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -50,7 +51,7 @@ public class SideBarConfig extends AbstractConfigEntity {
         "&ePing: &f%player_ping%ms",
         "",
         "&7服务器时间",
-        "&f%server_time_hh:mm:ss%",
+        "&f%server_time_HH:mm:ss%",
         "",
         "&6play.example.com"
     );
@@ -63,5 +64,55 @@ public class SideBarConfig extends AbstractConfigEntity {
 
     public SideBarConfig() {
         super("config/sidebar.yml");
+    }
+
+    /**
+     * The pre-6.3.0 shipped default world-name line, which used the invalid PlaceholderAPI
+     * syntax {@code %world_name%} (UltiKits/UltiSideBar#13 -- the real "World" expansion
+     * placeholder, {@code %world_name_<world>%}, requires an explicit world argument).
+     * {@code AbstractConfigEntity.init()} never overwrites a key that already exists on disk,
+     * so any server that has ever started this plugin keeps this exact string in its persisted
+     * {@code sidebar.yml} forever unless it is rewritten explicitly.
+     */
+    private static final String LEGACY_WORLD_NAME_LINE = "&e世界: &f%world_name%";
+
+    /**
+     * The corrected default that replaces {@link #LEGACY_WORLD_NAME_LINE}, kept in sync by hand
+     * with the "lines" default above.
+     */
+    private static final String CURRENT_WORLD_NAME_LINE = "&e世界: &f%player_world%";
+
+    /**
+     * One-time migration for a persisted {@code sidebar.yml} whose {@code lines} list still
+     * carries the old, invalid {@link #LEGACY_WORLD_NAME_LINE} default (issue #13). Rewrites
+     * only a list entry that is byte-identical to that old default -- any operator
+     * customisation, including a line that merely mentions {@code %world_name%} alongside other
+     * text, is left untouched. Idempotent: once migrated, no entry matches
+     * {@link #LEGACY_WORLD_NAME_LINE} any more, so a second call is a no-op.
+     * <p>
+     * Must be called after {@code init(UltiToolsPlugin)} has populated {@link #lines} from
+     * disk. The caller is responsible for persisting the result with {@code save()} when this
+     * method returns {@code true} -- this method only updates the in-memory value.
+     *
+     * @return {@code true} if at least one line was rewritten, {@code false} otherwise
+     */
+    public boolean migrateLegacyWorldNameDefaultLine() {
+        if (lines == null) {
+            return false;
+        }
+        boolean changed = false;
+        List<String> migrated = new ArrayList<>(lines.size());
+        for (String line : lines) {
+            if (LEGACY_WORLD_NAME_LINE.equals(line)) {
+                migrated.add(CURRENT_WORLD_NAME_LINE);
+                changed = true;
+            } else {
+                migrated.add(line);
+            }
+        }
+        if (changed) {
+            lines = migrated;
+        }
+        return changed;
     }
 }

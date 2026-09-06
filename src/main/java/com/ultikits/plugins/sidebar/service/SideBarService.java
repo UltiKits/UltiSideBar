@@ -15,6 +15,7 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.scoreboard.*;
 import org.bukkit.scheduler.BukkitTask;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -58,6 +59,22 @@ public class SideBarService {
         // Initialize data operator for persistent storage
         dataOperator = plugin.getDataOperator(SideBarPreference.class);
         bukkitPlugin = Bukkit.getPluginManager().getPlugin("UltiTools");
+
+        // One-time migration (issue #13, CR-01): AbstractConfigEntity.init() -- which has
+        // already run by this point, via UltiToolsPlugin's constructor -- only fills keys that
+        // are MISSING from the persisted file and never overwrites an existing "lines" value,
+        // so a server that has ever started an older version of this plugin keeps the invalid
+        // %world_name% default forever without this explicit, exact-match rewrite. Runs again
+        // on every reload() (this method is also called from reload()), which is harmless: once
+        // migrated, the exact-match check finds nothing left to rewrite.
+        if (config.migrateLegacyWorldNameDefaultLine()) {
+            try {
+                config.save();
+            } catch (IOException e) {
+                plugin.getLogger().warn("Failed to persist the sidebar.yml %world_name% "
+                        + "placeholder migration: " + e.getMessage());
+            }
+        }
 
         // Check PlaceholderAPI
         placeholderApiAvailable = Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null;
