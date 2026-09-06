@@ -2,8 +2,14 @@ package com.ultikits.plugins.sidebar.config;
 
 import org.junit.jupiter.api.*;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -136,6 +142,86 @@ class SideBarConfigTest {
             SideBarConfig config = createRealConfig();
             config.setLines(Collections.emptyList());
             assertThat(config.getLines()).isEmpty();
+        }
+    }
+
+    // ============================
+    // Default sidebar renderability
+    // ============================
+
+    @Nested
+    @DisplayName("Default Sidebar Renderability")
+    class DefaultSidebarRenderabilityTests {
+
+        /**
+         * Placeholder tokens the shipped defaults are allowed to contain. Every one of these
+         * is a real PlaceholderAPI placeholder that resolves once PlaceholderAPI (and, for
+         * vault_eco_balance_formatted, Vault plus an economy provider) is installed --
+         * "documented as requiring the external placeholder provider" is a legitimate category,
+         * distinct from a token that resolves nowhere no matter what is installed.
+         */
+        private final Set<String> KNOWN_RESOLVABLE_TOKENS = new HashSet<>(Arrays.asList(
+                "player_name",
+                "server_online",
+                "server_max_players",
+                "player_world",
+                "vault_eco_balance_formatted",
+                "player_ping"
+        ));
+
+        private boolean isKnownResolvable(String token) {
+            if (KNOWN_RESOLVABLE_TOKENS.contains(token)) {
+                return true;
+            }
+            // PlaceholderAPI's Server expansion accepts an arbitrary SimpleDateFormat pattern
+            // as a dynamic suffix: %server_time_<SimpleDateFormat>%.
+            return token.startsWith("server_time_");
+        }
+
+        private List<String> extractTokens(List<String> lines) {
+            Pattern tokenPattern = Pattern.compile("%([a-zA-Z0-9_:]+)%");
+            List<String> tokens = new ArrayList<>();
+            for (String line : lines) {
+                Matcher matcher = tokenPattern.matcher(line);
+                while (matcher.find()) {
+                    tokens.add(matcher.group(1));
+                }
+            }
+            return tokens;
+        }
+
+        @Test
+        @DisplayName("Default lines contain no token that nothing resolves")
+        void defaultLinesContainNoTokenThatNothingResolves() {
+            SideBarConfig config = createRealConfig();
+
+            List<String> tokens = extractTokens(config.getLines());
+            assertThat(tokens).isNotEmpty();
+
+            List<String> unresolvableTokens = new ArrayList<>();
+            for (String token : tokens) {
+                if (!isKnownResolvable(token)) {
+                    unresolvableTokens.add(token);
+                }
+            }
+
+            assertThat(unresolvableTokens)
+                    .as("Every placeholder token in the shipped defaults must be a real, " +
+                            "resolvable PlaceholderAPI placeholder -- not a token nothing provides")
+                    .isEmpty();
+        }
+
+        @Test
+        @DisplayName("An operator-configured line is unaffected")
+        void anOperatorConfiguredLineIsUnaffected() {
+            SideBarConfig config = createRealConfig();
+            List<String> customLines = Arrays.asList(
+                    "&aCustom Line 1", "%world_name%", "&bAnother line"
+            );
+
+            config.setLines(customLines);
+
+            assertThat(config.getLines()).isEqualTo(customLines);
         }
     }
 
