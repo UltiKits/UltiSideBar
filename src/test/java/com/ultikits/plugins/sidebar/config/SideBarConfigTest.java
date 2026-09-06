@@ -325,8 +325,8 @@ class SideBarConfigTest {
     // ============================
 
     @Nested
-    @DisplayName("Legacy World-Name Default Line Migration")
-    class LegacyWorldNameLineMigration {
+    @DisplayName("Legacy Default Line Migration")
+    class LegacyDefaultLineMigration {
 
         @TempDir
         Path tempDir;
@@ -359,7 +359,7 @@ class SideBarConfigTest {
             SideBarConfig config = new SideBarConfig();
             config.init(mockPlugin);
 
-            boolean rewritten = config.migrateLegacyWorldNameDefaultLine();
+            boolean rewritten = config.migrateLegacyDefaultLines();
             assertThat(rewritten).isTrue();
             config.save();
 
@@ -386,7 +386,7 @@ class SideBarConfigTest {
             SideBarConfig config = new SideBarConfig();
             config.init(mockPlugin);
 
-            boolean rewritten = config.migrateLegacyWorldNameDefaultLine();
+            boolean rewritten = config.migrateLegacyDefaultLines();
 
             assertThat(rewritten).isFalse();
             assertThat(config.getLines())
@@ -401,7 +401,7 @@ class SideBarConfigTest {
             SideBarConfig config = new SideBarConfig();
             config.init(mockPlugin);
 
-            assertThat(config.migrateLegacyWorldNameDefaultLine()).isFalse();
+            assertThat(config.migrateLegacyDefaultLines()).isFalse();
         }
 
         @Test
@@ -412,7 +412,7 @@ class SideBarConfigTest {
             SideBarConfig config = new SideBarConfig();
             config.init(mockPlugin);
 
-            boolean rewritten = config.migrateLegacyWorldNameDefaultLine();
+            boolean rewritten = config.migrateLegacyDefaultLines();
             assertThat(rewritten)
                     .as("a persisted server-time line using the ambiguous 12-hour pattern must be migrated too")
                     .isTrue();
@@ -441,7 +441,7 @@ class SideBarConfigTest {
             SideBarConfig config = new SideBarConfig();
             config.init(mockPlugin);
 
-            boolean rewritten = config.migrateLegacyWorldNameDefaultLine();
+            boolean rewritten = config.migrateLegacyDefaultLines();
 
             assertThat(rewritten).isTrue();
             assertThat(config.getLines())

@@ -3,7 +3,9 @@ package com.ultikits.plugins.sidebar.config;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.ultikits.ultitools.abstracts.AbstractConfigEntity;
 import com.ultikits.ultitools.annotations.ConfigEntity;
@@ -83,12 +85,44 @@ public class SideBarConfig extends AbstractConfigEntity {
     private static final String CURRENT_WORLD_NAME_LINE = "&e世界: &f%player_world%";
 
     /**
+     * The pre-6.3.0 shipped default server-time line, which used the ambiguous 12-hour pattern
+     * {@code hh:mm:ss} with no AM/PM marker (PR #15 round-3 review). Same persistence problem as
+     * {@link #LEGACY_WORLD_NAME_LINE}: {@code AbstractConfigEntity.init()} preserves this exact
+     * string in {@code sidebar.yml} on every server that has ever started an older version of
+     * this plugin, unless it is rewritten explicitly.
+     */
+    private static final String LEGACY_SERVER_TIME_LINE = "&f%server_time_hh:mm:ss%";
+
+    /**
+     * The corrected default that replaces {@link #LEGACY_SERVER_TIME_LINE} with the unambiguous
+     * 24-hour pattern, kept in sync by hand with the "lines" default above.
+     */
+    private static final String CURRENT_SERVER_TIME_LINE = "&f%server_time_HH:mm:ss%";
+
+    /**
+     * Every byte-identical legacy default line this plugin has ever shipped, mapped to its
+     * corrected replacement. Extend this map -- not the loop in
+     * {@link #migrateLegacyDefaultLines()} -- when a future shipped default needs the same
+     * exact-match migration treatment.
+     */
+    private static final Map<String, String> LEGACY_LINE_REPLACEMENTS;
+
+    static {
+        Map<String, String> replacements = new LinkedHashMap<>();
+        replacements.put(LEGACY_WORLD_NAME_LINE, CURRENT_WORLD_NAME_LINE);
+        replacements.put(LEGACY_SERVER_TIME_LINE, CURRENT_SERVER_TIME_LINE);
+        LEGACY_LINE_REPLACEMENTS = Collections.unmodifiableMap(replacements);
+    }
+
+    /**
      * One-time migration for a persisted {@code sidebar.yml} whose {@code lines} list still
-     * carries the old, invalid {@link #LEGACY_WORLD_NAME_LINE} default (issue #13). Rewrites
-     * only a list entry that is byte-identical to that old default -- any operator
-     * customisation, including a line that merely mentions {@code %world_name%} alongside other
-     * text, is left untouched. Idempotent: once migrated, no entry matches
-     * {@link #LEGACY_WORLD_NAME_LINE} any more, so a second call is a no-op.
+     * carries one or more old, invalid shipped defaults tracked in
+     * {@link #LEGACY_LINE_REPLACEMENTS} (issue #13; PR #15 round-3 review extended this from the
+     * world-name line alone to also cover the 12-hour server-time line). Rewrites only a list
+     * entry that is byte-identical to a tracked legacy default -- any operator customisation,
+     * including a line that merely mentions a legacy token alongside other text, is left
+     * untouched. Idempotent: once migrated, no entry matches a tracked legacy default any more,
+     * so a second call is a no-op.
      * <p>
      * Must be called after {@code init(UltiToolsPlugin)} has populated {@link #lines} from
      * disk. The caller is responsible for persisting the result with {@code save()} when this
@@ -96,15 +130,16 @@ public class SideBarConfig extends AbstractConfigEntity {
      *
      * @return {@code true} if at least one line was rewritten, {@code false} otherwise
      */
-    public boolean migrateLegacyWorldNameDefaultLine() {
+    public boolean migrateLegacyDefaultLines() {
         if (lines == null) {
             return false;
         }
         boolean changed = false;
         List<String> migrated = new ArrayList<>(lines.size());
         for (String line : lines) {
-            if (LEGACY_WORLD_NAME_LINE.equals(line)) {
-                migrated.add(CURRENT_WORLD_NAME_LINE);
+            String replacement = LEGACY_LINE_REPLACEMENTS.get(line);
+            if (replacement != null) {
+                migrated.add(replacement);
                 changed = true;
             } else {
                 migrated.add(line);

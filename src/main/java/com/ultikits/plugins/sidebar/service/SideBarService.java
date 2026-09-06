@@ -60,19 +60,21 @@ public class SideBarService {
         dataOperator = plugin.getDataOperator(SideBarPreference.class);
         bukkitPlugin = Bukkit.getPluginManager().getPlugin("UltiTools");
 
-        // One-time migration (issue #13, CR-01): AbstractConfigEntity.init() -- which has
-        // already run by this point, via UltiToolsPlugin's constructor -- only fills keys that
-        // are MISSING from the persisted file and never overwrites an existing "lines" value,
-        // so a server that has ever started an older version of this plugin keeps the invalid
-        // %world_name% default forever without this explicit, exact-match rewrite. Runs again
-        // on every reload() (this method is also called from reload()), which is harmless: once
-        // migrated, the exact-match check finds nothing left to rewrite.
-        if (config.migrateLegacyWorldNameDefaultLine()) {
+        // One-time migration (issue #13, CR-01; extended by PR #15 round-3 review to also cover
+        // the legacy 12-hour server-time line): AbstractConfigEntity.init() -- which has already
+        // run by this point, via UltiToolsPlugin's constructor -- only fills keys that are
+        // MISSING from the persisted file and never overwrites an existing "lines" value, so a
+        // server that has ever started an older version of this plugin keeps every stale shipped
+        // default (the invalid %world_name% line, the ambiguous %server_time_hh:mm:ss% line)
+        // forever without this explicit, exact-match rewrite. Runs again on every reload() (this
+        // method is also called from reload()), which is harmless: once migrated, the exact-match
+        // check finds nothing left to rewrite.
+        if (config.migrateLegacyDefaultLines()) {
             try {
                 config.save();
             } catch (IOException e) {
-                plugin.getLogger().warn("Failed to persist the sidebar.yml %world_name% "
-                        + "placeholder migration: " + e.getMessage());
+                plugin.getLogger().warn("Failed to persist the sidebar.yml legacy default line "
+                        + "migration: " + e.getMessage());
             }
         }
 
