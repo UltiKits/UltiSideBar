@@ -403,6 +403,55 @@ class SideBarConfigTest {
 
             assertThat(config.migrateLegacyWorldNameDefaultLine()).isFalse();
         }
+
+        @Test
+        @DisplayName("Also rewrites a persisted line byte-identical to the old 12-hour server-time default (PR #15 round-3 review)")
+        void rewritesLegacyServerTimeLine() throws Exception {
+            File configFile = persistLines(Collections.singletonList("&f%server_time_hh:mm:ss%"));
+
+            SideBarConfig config = new SideBarConfig();
+            config.init(mockPlugin);
+
+            boolean rewritten = config.migrateLegacyWorldNameDefaultLine();
+            assertThat(rewritten)
+                    .as("a persisted server-time line using the ambiguous 12-hour pattern must be migrated too")
+                    .isTrue();
+            config.save();
+
+            assertThat(config.getLines())
+                    .contains("&f%server_time_HH:mm:ss%")
+                    .doesNotContain("&f%server_time_hh:mm:ss%");
+
+            YamlConfiguration onDisk = YamlConfiguration.loadConfiguration(configFile);
+            assertThat(onDisk.getStringList("lines"))
+                    .contains("&f%server_time_HH:mm:ss%")
+                    .doesNotContain("&f%server_time_hh:mm:ss%");
+        }
+
+        @Test
+        @DisplayName("Rewrites both stale legacy defaults together on a real upgrade path, leaving the operator's custom line untouched")
+        void rewritesBothLegacyDefaultsOnRealUpgrade() throws Exception {
+            persistLines(Arrays.asList(
+                    "&7欢迎, &f%player_name%",
+                    "&e世界: &f%world_name%",
+                    "&aOperator's own custom line",
+                    "&f%server_time_hh:mm:ss%"
+            ));
+
+            SideBarConfig config = new SideBarConfig();
+            config.init(mockPlugin);
+
+            boolean rewritten = config.migrateLegacyWorldNameDefaultLine();
+
+            assertThat(rewritten).isTrue();
+            assertThat(config.getLines())
+                    .as("both stale legacy defaults must be corrected in the same pass")
+                    .contains("&e世界: &f%player_world%", "&f%server_time_HH:mm:ss%")
+                    .doesNotContain("&e世界: &f%world_name%", "&f%server_time_hh:mm:ss%");
+            assertThat(config.getLines())
+                    .as("an operator's own custom line must survive untouched")
+                    .contains("&aOperator's own custom line");
+        }
     }
 
     /**
