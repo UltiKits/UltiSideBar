@@ -44,7 +44,7 @@ public class SideBarConfig extends AbstractConfigEntity {
         "&7欢迎, &f%player_name%",
         "",
         "&e在线人数: &f%server_online%/%server_max_players%",
-        "&e世界: &f%world_name%",
+        "&e世界: &f%player_world%",
         "",
         "&e金币: &f%vault_eco_balance_formatted%",
         "&ePing: &f%player_ping%ms",
