@@ -1,11 +1,32 @@
 package com.ultikits.plugins.sidebar.config;
 
-import org.junit.jupiter.api.*;
+import com.ultikits.plugins.sidebar.UltiSideBarTestHelper;
+import com.ultikits.plugins.sidebar.service.SideBarService;
+import com.ultikits.ultitools.abstracts.UltiToolsPlugin;
 
+import me.clip.placeholderapi.PlaceholderAPI;
+import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.Player;
+import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.io.TempDir;
+import org.mockito.Answers;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
+
+import java.io.File;
+import java.lang.reflect.Method;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 
 @DisplayName("SideBarConfig Tests")
 class SideBarConfigTest {
@@ -136,6 +157,300 @@ class SideBarConfigTest {
             SideBarConfig config = createRealConfig();
             config.setLines(Collections.emptyList());
             assertThat(config.getLines()).isEmpty();
+        }
+    }
+
+    // ============================
+    // Default sidebar renderability
+    // ============================
+
+    @Nested
+    @DisplayName("Default Sidebar Renderability")
+    class DefaultSidebarRenderabilityTests {
+
+        /**
+         * Sentinel substitutions for the placeholders a real PlaceholderAPI installation (Player
+         * + Server expansions) resolves, sourced independently from PlaceholderAPI's own
+         * placeholder wiki rather than re-derived from the defaults under test in this file --
+         * so a future commit cannot introduce a broken token and "fix" this test in the same
+         * edit by adding the same name to a local allow-list.
+         * <p>
+         * {@code vault_eco_balance_formatted} is deliberately excluded (WR-03): it additionally
+         * requires Vault plus a registered economy provider, a materially larger install surface
+         * than "PlaceholderAPI is installed", so it is exempted below by name rather than
+         * silently substituted here.
+         */
+        private static final String VAULT_DEPENDENT_TOKEN = "%vault_eco_balance_formatted%";
+
+        private final Pattern serverTimeToken = Pattern.compile("%server_time_([^%]+)%");
+
+        private String stubResolve(String text) {
+            String resolved = text
+                    .replace("%player_name%", "Steve")
+                    .replace("%server_online%", "12")
+                    .replace("%server_max_players%", "100")
+                    .replace("%player_world%", "world")
+                    .replace("%player_ping%", "42");
+            // PlaceholderAPI's Server expansion accepts a SimpleDateFormat pattern as a dynamic
+            // suffix: %server_time_<SimpleDateFormat>%. A real installation only resolves it if
+            // the suffix is a legal SimpleDateFormat pattern -- an illegal pattern letter (e.g.
+            // %server_time_foo%, "f" is not a pattern letter) makes java.text.SimpleDateFormat's
+            // constructor throw IllegalArgumentException, so the real expansion cannot format it.
+            // Substituting every suffix unconditionally, as an earlier revision of this stub did,
+            // would let this test pass a shipped default that fails to render at runtime.
+            Matcher serverTimeMatcher = serverTimeToken.matcher(resolved);
+            StringBuffer buffer = new StringBuffer();
+            while (serverTimeMatcher.find()) {
+                String suffix = serverTimeMatcher.group(1);
+                String replacement;
+                try {
+                    new java.text.SimpleDateFormat(suffix).format(new java.util.Date());
+                    replacement = "12:00:00";
+                } catch (IllegalArgumentException invalidPattern) {
+                    replacement = serverTimeMatcher.group();
+                }
+                serverTimeMatcher.appendReplacement(buffer, Matcher.quoteReplacement(replacement));
+            }
+            serverTimeMatcher.appendTail(buffer);
+            return buffer.toString();
+        }
+
+        @Test
+        @DisplayName("Default lines contain no token that nothing resolves")
+        void defaultLinesContainNoTokenThatNothingResolves() throws Exception {
+            SideBarConfig config = createRealConfig();
+
+            // Route every default line through the module's own placeholder-resolution path
+            // (SideBarService.parsePlaceholders -> PlaceholderAPI.setPlaceholders) instead of
+            // checking token names against a hand-authored allow-list mirroring this same
+            // file's defaults -- that allow-list could never catch a broken token added
+            // alongside a matching allow-list entry in the same commit. The PlaceholderAPI seam
+            // is stubbed to behave the way a real installation does: a recognized placeholder is
+            // substituted, and one no registered expansion recognizes is left untouched in the
+            // output -- exactly the symptom the original issue (#13) reported.
+            SideBarService service = new SideBarService();
+            UltiSideBarTestHelper.setField(service, "placeholderApiAvailable", true);
+            Player player = Mockito.mock(Player.class);
+
+            Method parsePlaceholders = SideBarService.class
+                    .getDeclaredMethod("parsePlaceholders", Player.class, String.class);
+            parsePlaceholders.setAccessible(true);
+
+            try (MockedStatic<PlaceholderAPI> placeholderApi = Mockito.mockStatic(PlaceholderAPI.class)) {
+                placeholderApi.when(() -> PlaceholderAPI.setPlaceholders(eq(player), anyString()))
+                        .thenAnswer(invocation -> stubResolve(invocation.getArgument(1)));
+
+                List<String> unresolvedTokensRemaining = new ArrayList<>();
+                Pattern leftoverTokenPattern = Pattern.compile("%[^%]+%");
+                for (String line : config.getLines()) {
+                    String rendered = (String) parsePlaceholders.invoke(service, player, line);
+                    Matcher matcher = leftoverTokenPattern.matcher(rendered);
+                    while (matcher.find()) {
+                        String leftover = matcher.group();
+                        if (!VAULT_DEPENDENT_TOKEN.equals(leftover)) {
+                            unresolvedTokensRemaining.add(leftover);
+                        }
+                    }
+                }
+
+                assertThat(unresolvedTokensRemaining)
+                        .as("Every default line must render through the module's own placeholder "
+                                + "path with no leftover token that nothing resolves")
+                        .isEmpty();
+            }
+        }
+
+        @Test
+        @DisplayName("The stub leaves an invalid server-time pattern unresolved, matching a real installation")
+        void stubResolveRejectsAnInvalidServerTimePattern() {
+            // Regression guard for the earlier permissive regex ("%server_time_[^%]+%" ->
+            // "12:00:00" unconditionally), which would let defaultLinesContainNoTokenThatNothingResolves()
+            // pass a shipped default containing an illegal SimpleDateFormat suffix -- java.text.
+            // SimpleDateFormat throws IllegalArgumentException on an illegal pattern letter such
+            // as 'f' or 'o', so a real PlaceholderAPI Server expansion cannot format
+            // "%server_time_foo%" either. The stub must mirror that failure, not paper over it.
+            assertThat(stubResolve("%server_time_foo%")).isEqualTo("%server_time_foo%");
+            assertThat(stubResolve("&f%server_time_HH:mm:ss%")).isEqualTo("&f12:00:00");
+        }
+
+        @Test
+        @DisplayName("An operator-configured line survives init() against a persisted file that also holds the legacy default")
+        void anOperatorConfiguredLineIsUnaffected(@TempDir Path tempDir) throws Exception {
+            // Drives the real init()-mediated persisted-file-vs-default precedence (CR-01) --
+            // a bare setLines()/getLines() round-trip cannot fail for any change to
+            // SideBarConfig's default-handling behavior and proves nothing about upgrade safety.
+            File configFile = new File(tempDir.toFile(), "config/sidebar.yml");
+            Files.createDirectories(configFile.getParentFile().toPath());
+            YamlConfiguration persisted = new YamlConfiguration();
+            persisted.set("lines", Arrays.asList(
+                    "&e世界: &f%world_name%",
+                    "&aOperator's own custom line"
+            ));
+            persisted.save(configFile);
+
+            SideBarConfig config = createRealConfig();
+            config.init(mockPluginBackedBy(tempDir));
+
+            assertThat(config.getLines())
+                    .as("an operator's own persisted line must survive init() untouched")
+                    .contains("&aOperator's own custom line");
+        }
+    }
+
+    /**
+     * Builds an {@code UltiToolsPlugin} test double whose {@code getConfigFolder()}/
+     * {@code getConfigFile(String)} resolve against {@code tempDir}. Those two methods are
+     * {@code protected final} on {@code UltiToolsPlugin}, declared outside this test's package,
+     * so a normal {@code Mockito.when(mock.getConfigFolder())...} does not even compile here --
+     * this uses Mockito's {@code mock(Class, Answer)} default-answer form instead, which
+     * intercepts every method call by reflection ({@code invocation.getMethod()}) rather than by
+     * a source-level call to the (inaccessible) method.
+     */
+    private static UltiToolsPlugin mockPluginBackedBy(Path tempDir) {
+        return Mockito.mock(UltiToolsPlugin.class, invocation -> {
+            String methodName = invocation.getMethod().getName();
+            if ("getConfigFolder".equals(methodName)) {
+                return tempDir.toString();
+            }
+            if ("getConfigFile".equals(methodName)) {
+                String path = invocation.getArgument(0);
+                return new File(tempDir.toFile(), path);
+            }
+            return Answers.RETURNS_DEFAULTS.answer(invocation);
+        });
+    }
+
+    // ============================
+    // Legacy %world_name% default line migration (issue #13, CR-01)
+    // ============================
+
+    @Nested
+    @DisplayName("Legacy Default Line Migration")
+    class LegacyDefaultLineMigration {
+
+        @TempDir
+        Path tempDir;
+
+        private UltiToolsPlugin mockPlugin;
+
+        @BeforeEach
+        void setUp() {
+            mockPlugin = mockPluginBackedBy(tempDir);
+        }
+
+        private File persistLines(List<String> lines) throws Exception {
+            File configFile = new File(tempDir.toFile(), "config/sidebar.yml");
+            Files.createDirectories(configFile.getParentFile().toPath());
+            YamlConfiguration persisted = new YamlConfiguration();
+            persisted.set("lines", lines);
+            persisted.save(configFile);
+            return configFile;
+        }
+
+        @Test
+        @DisplayName("Rewrites a persisted line byte-identical to the old %world_name% default; a custom line survives")
+        void rewritesLegacyLineButLeavesCustomLineUntouched() throws Exception {
+            File configFile = persistLines(Arrays.asList(
+                    "&7欢迎, &f%player_name%",
+                    "&e世界: &f%world_name%",
+                    "&aOperator's own custom line"
+            ));
+
+            SideBarConfig config = new SideBarConfig();
+            config.init(mockPlugin);
+
+            boolean rewritten = config.migrateLegacyDefaultLines();
+            assertThat(rewritten).isTrue();
+            config.save();
+
+            assertThat(config.getLines())
+                    .as("the stale %world_name% line must be rewritten to the corrected default")
+                    .contains("&e世界: &f%player_world%")
+                    .doesNotContain("&e世界: &f%world_name%");
+            assertThat(config.getLines())
+                    .as("an operator's own custom line must be left untouched")
+                    .contains("&aOperator's own custom line");
+
+            YamlConfiguration onDisk = YamlConfiguration.loadConfiguration(configFile);
+            assertThat(onDisk.getStringList("lines"))
+                    .as("the migration must be persisted back to disk")
+                    .contains("&e世界: &f%player_world%", "&aOperator's own custom line")
+                    .doesNotContain("&e世界: &f%world_name%");
+        }
+
+        @Test
+        @DisplayName("Does not touch a line that merely mentions %world_name% inside other text")
+        void doesNotTouchLineThatOnlyMentionsTheLegacyToken() throws Exception {
+            persistLines(Collections.singletonList("&7Custom: &f%world_name% (renamed by admin)"));
+
+            SideBarConfig config = new SideBarConfig();
+            config.init(mockPlugin);
+
+            boolean rewritten = config.migrateLegacyDefaultLines();
+
+            assertThat(rewritten).isFalse();
+            assertThat(config.getLines())
+                    .containsExactly("&7Custom: &f%world_name% (renamed by admin)");
+        }
+
+        @Test
+        @DisplayName("Is a no-op once the persisted line already uses the corrected placeholder")
+        void noOpWhenAlreadyMigrated() throws Exception {
+            persistLines(Collections.singletonList("&e世界: &f%player_world%"));
+
+            SideBarConfig config = new SideBarConfig();
+            config.init(mockPlugin);
+
+            assertThat(config.migrateLegacyDefaultLines()).isFalse();
+        }
+
+        @Test
+        @DisplayName("Also rewrites a persisted line byte-identical to the old 12-hour server-time default (PR #15 round-3 review)")
+        void rewritesLegacyServerTimeLine() throws Exception {
+            File configFile = persistLines(Collections.singletonList("&f%server_time_hh:mm:ss%"));
+
+            SideBarConfig config = new SideBarConfig();
+            config.init(mockPlugin);
+
+            boolean rewritten = config.migrateLegacyDefaultLines();
+            assertThat(rewritten)
+                    .as("a persisted server-time line using the ambiguous 12-hour pattern must be migrated too")
+                    .isTrue();
+            config.save();
+
+            assertThat(config.getLines())
+                    .contains("&f%server_time_HH:mm:ss%")
+                    .doesNotContain("&f%server_time_hh:mm:ss%");
+
+            YamlConfiguration onDisk = YamlConfiguration.loadConfiguration(configFile);
+            assertThat(onDisk.getStringList("lines"))
+                    .contains("&f%server_time_HH:mm:ss%")
+                    .doesNotContain("&f%server_time_hh:mm:ss%");
+        }
+
+        @Test
+        @DisplayName("Rewrites both stale legacy defaults together on a real upgrade path, leaving the operator's custom line untouched")
+        void rewritesBothLegacyDefaultsOnRealUpgrade() throws Exception {
+            persistLines(Arrays.asList(
+                    "&7欢迎, &f%player_name%",
+                    "&e世界: &f%world_name%",
+                    "&aOperator's own custom line",
+                    "&f%server_time_hh:mm:ss%"
+            ));
+
+            SideBarConfig config = new SideBarConfig();
+            config.init(mockPlugin);
+
+            boolean rewritten = config.migrateLegacyDefaultLines();
+
+            assertThat(rewritten).isTrue();
+            assertThat(config.getLines())
+                    .as("both stale legacy defaults must be corrected in the same pass")
+                    .contains("&e世界: &f%player_world%", "&f%server_time_HH:mm:ss%")
+                    .doesNotContain("&e世界: &f%world_name%", "&f%server_time_hh:mm:ss%");
+            assertThat(config.getLines())
+                    .as("an operator's own custom line must survive untouched")
+                    .contains("&aOperator's own custom line");
         }
     }
 
