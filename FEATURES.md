@@ -63,7 +63,7 @@ for UAT execution and issue reconciliation — the public description of these f
 - **Shipped defaults containing Chinese-language content:** this module's `title` and `lines`
   config defaults are literal, hardcoded Simplified Chinese strings (server-owner-authored
   scoreboard content, not `i18n(...)` keys) — they do NOT respond to the framework's `language`
-  setting at all, unlike this module's twelve `i18n(...)` command/status messages, which DO have
+  setting at all, unlike this module's eleven `i18n(...)` command/status messages, which DO have
   complete `lang/en.yml` and `lang/zh.yml` translations (0 missing keys either direction —
   confirmed by a full per-file key diff, unlike the defect classes filed against other modules in
   this phase). Per D-02's English-only rule, every quoted default below is translated into English
