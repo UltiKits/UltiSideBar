@@ -159,9 +159,9 @@ overrides the `onReload()`/`onUnregister()` hooks they call (`UltiKits/UltiSideB
 `Module 'UltiSideBar' reloaded.`, then `onReload()`. Unload order: `onUnregister()`, then command
 unregistration, then listener unregistration. Before the migration this module replaced both
 methods. Its reload override reloaded configuration itself (`origin/master` `UltiSideBar.java:48`)
-but skipped the language refresh. Its unload override skipped command unregistration on every
-unload path, and listener unregistration on `/upm uninstall` (server shutdown already unregistered
-listeners in `PluginManager#unregister`). The drift report and the reload log line are new in 6.3.0.
+but skipped the language refresh. Its unload override made `/upm uninstall UltiSideBar` skip both
+command and listener unregistration. Server shutdown was unaffected: the framework ran its own command
+and listener cleanup there independently of the override. The drift report and the reload log line are new in 6.3.0.
 Configuration is reloaded once per reload both before and after the migration.
 
 | ID | Feature | Kind | How to reach | Permission | Target | Tier | Manual | Source |
