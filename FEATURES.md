@@ -16,7 +16,9 @@ for UAT execution and issue reconciliation — the public description of these f
   not a re-derived slug. An ID changes only when the feature's identity changes, never on
   rewording. IDs are unique within a repository.
 - **Kind**, exactly these eight values: `command`, `config`, `event`, `gui`, `scheduled`,
-  `placeholder`, `persistence`, `gate`. Each maps one-to-one onto a reconciliation-table line.
+  `placeholder`, `persistence`, `gate`. Each maps one-to-one onto a reconciliation-table line,
+  except the two `ultisidebar.lifecycle.*` `event` rows under `## Lifecycle Hooks`, which are
+  framework-invoked lifecycle hooks with no annotation site to reconcile against.
   This module has no `gui` rows (no GUI page class — a Bukkit scoreboard sidebar is not an
   inventory), no `scheduled` rows (this module's periodic content refresh is a hand-rolled
   `Bukkit.getScheduler().runTaskTimer` call inside `SideBarService#startUpdateTask`, NOT a
@@ -151,18 +153,16 @@ rows against 3 methods.
 
 ## Lifecycle Hooks
 
-As of UltiTools 6.3.0, `UltiToolsPlugin#reloadSelf()`/`#unregisterSelf()` are `final` framework
-template methods. Before `UltiKits/UltiSideBar#16`'s wave-0 migration this module overrode both
-directly, so the framework's own steps never ran for it: on reload, the language catalogue refresh,
-the `@ConditionalOnConfig` drift report and the framework's per-module reload line; on unload, the
-framework's command and listener cleanup. This module now overrides the extension-point hooks
-`onReload()`/`onUnregister()` instead, with the same service calls and log lines moved verbatim. The
-one exception is its own `ConfigManager#reloadConfigs` call, which is removed because the framework
-now reloads configuration before it calls the hook. Configuration is therefore reloaded once per
-reload, the same count as before the migration: measured with a unit probe that counts
-`reloadConfigs` invocations, 1 against released UltiTools 6.2.5 before the migration and 1 through
-the 6.3.0 template method after it. Neither hook is reached through a `@CmdMapping` site of its own,
-so both rows below are `event`-Kind.
+As of UltiTools 6.3.0 `UltiToolsPlugin#reloadSelf()`/`#unregisterSelf()` are `final`; this module
+overrides the `onReload()`/`onUnregister()` hooks they call (`UltiKits/UltiSideBar#16`). Reload order:
+`ConfigManager#reloadConfigs`, language catalogue refresh, `@ConditionalOnConfig` drift report,
+`Module 'UltiSideBar' reloaded.`, then `onReload()`. Unload order: `onUnregister()`, then command
+unregistration, then listener unregistration. Before the migration this module replaced both
+methods. Its reload override reloaded configuration itself (`origin/master` `UltiSideBar.java:48`)
+but skipped the language refresh. Its unload override skipped command unregistration on every
+unload path, and listener unregistration on `/upm uninstall` (server shutdown already unregistered
+listeners in `PluginManager#unregister`). The drift report and the reload log line are new in 6.3.0.
+Configuration is reloaded once per reload both before and after the migration.
 
 | ID | Feature | Kind | How to reach | Permission | Target | Tier | Manual | Source |
 |---|---|---|---|---|---|---|---|---|
