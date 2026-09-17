@@ -37,8 +37,8 @@ class UltiSideBarTest {
     }
 
     @Test
-    @DisplayName("unregisterSelf should call service shutdown")
-    void unregisterSelf() throws Exception {
+    @DisplayName("onUnregister should call service shutdown exactly once (UltiKits/UltiSideBar#16)")
+    void onUnregisterShutsDownService() throws Exception {
         UltiSideBar plugin = mock(UltiSideBar.class);
         PluginLogger logger = mock(PluginLogger.class);
         SimpleContainer context = mock(SimpleContainer.class);
@@ -48,17 +48,17 @@ class UltiSideBarTest {
         when(plugin.getContext()).thenReturn(context);
         when(context.getBean(SideBarService.class)).thenReturn(service);
         when(plugin.i18n("sidebar_disabled")).thenReturn("sidebar_disabled");
-        doCallRealMethod().when(plugin).unregisterSelf();
+        doCallRealMethod().when(plugin).onUnregister();
 
-        plugin.unregisterSelf();
+        plugin.onUnregister();
 
-        verify(service).shutdown();
+        verify(service, times(1)).shutdown();
         verify(logger).info("sidebar_disabled");
     }
 
     @Test
-    @DisplayName("reloadSelf should reload config and service")
-    void reloadSelf() throws Exception {
+    @DisplayName("onReload should reload the service exactly once and never reload configuration itself (UltiKits/UltiSideBar#16)")
+    void onReloadReloadsServiceWithoutReloadingConfigs() throws Exception {
         UltiSideBar plugin = mock(UltiSideBar.class);
         PluginLogger logger = mock(PluginLogger.class);
         SimpleContainer context = mock(SimpleContainer.class);
@@ -69,16 +69,18 @@ class UltiSideBarTest {
         when(plugin.getContext()).thenReturn(context);
         when(context.getBean(SideBarService.class)).thenReturn(service);
         when(plugin.i18n("sidebar_reloaded")).thenReturn("sidebar_reloaded");
-        doCallRealMethod().when(plugin).reloadSelf();
+        doCallRealMethod().when(plugin).onReload();
 
         try (MockedStatic<UltiToolsPlugin> pluginStatic = mockStatic(UltiToolsPlugin.class)) {
             pluginStatic.when(UltiToolsPlugin::getConfigManager).thenReturn(configManager);
 
-            plugin.reloadSelf();
+            plugin.onReload();
 
-            pluginStatic.verify(UltiToolsPlugin::getConfigManager);
-            verify(configManager).reloadConfigs(plugin);
-            verify(service).reload();
+            // The framework's final reloadSelf() has already reloaded configuration before it
+            // invokes this hook; the hook must not do it a second time.
+            pluginStatic.verify(UltiToolsPlugin::getConfigManager, never());
+            verifyNoInteractions(configManager);
+            verify(service, times(1)).reload();
             verify(logger).info("sidebar_reloaded");
         }
     }
@@ -103,8 +105,8 @@ class UltiSideBarTest {
     }
 
     @Test
-    @DisplayName("unregisterSelf should handle null service gracefully")
-    void unregisterSelfNullService() throws Exception {
+    @DisplayName("onUnregister should handle null service gracefully")
+    void onUnregisterNullService() throws Exception {
         UltiSideBar plugin = mock(UltiSideBar.class);
         PluginLogger logger = mock(PluginLogger.class);
         SimpleContainer context = mock(SimpleContainer.class);
@@ -113,16 +115,16 @@ class UltiSideBarTest {
         when(plugin.getContext()).thenReturn(context);
         when(context.getBean(SideBarService.class)).thenReturn(null);
         when(plugin.i18n("sidebar_disabled")).thenReturn("sidebar_disabled");
-        doCallRealMethod().when(plugin).unregisterSelf();
+        doCallRealMethod().when(plugin).onUnregister();
 
-        plugin.unregisterSelf();
+        plugin.onUnregister();
 
         verify(logger).info("sidebar_disabled");
     }
 
     @Test
-    @DisplayName("reloadSelf should handle null service gracefully")
-    void reloadSelfNullService() throws Exception {
+    @DisplayName("onReload should handle null service gracefully and still never reload configuration itself")
+    void onReloadNullService() throws Exception {
         UltiSideBar plugin = mock(UltiSideBar.class);
         PluginLogger logger = mock(PluginLogger.class);
         SimpleContainer context = mock(SimpleContainer.class);
@@ -132,15 +134,15 @@ class UltiSideBarTest {
         when(plugin.getContext()).thenReturn(context);
         when(context.getBean(SideBarService.class)).thenReturn(null);
         when(plugin.i18n("sidebar_reloaded")).thenReturn("sidebar_reloaded");
-        doCallRealMethod().when(plugin).reloadSelf();
+        doCallRealMethod().when(plugin).onReload();
 
         try (MockedStatic<UltiToolsPlugin> pluginStatic = mockStatic(UltiToolsPlugin.class)) {
             pluginStatic.when(UltiToolsPlugin::getConfigManager).thenReturn(configManager);
 
-            plugin.reloadSelf();
+            plugin.onReload();
 
-            pluginStatic.verify(UltiToolsPlugin::getConfigManager);
-            verify(configManager).reloadConfigs(plugin);
+            pluginStatic.verify(UltiToolsPlugin::getConfigManager, never());
+            verifyNoInteractions(configManager);
             verify(logger).info("sidebar_reloaded");
         }
     }
