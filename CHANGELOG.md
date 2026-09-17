@@ -9,11 +9,13 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
-- Unloading or reloading this module (`/ul reload UltiSideBar`, `/sidebar reload`, or disabling the
-  module) now actually runs the framework's own reload/unload steps (config reload, language
-  refresh, `@ConditionalOnConfig` drift reporting, command/listener cleanup) before this module's
-  own sidebar service reload/shutdown — previously these framework steps were silently skipped
-  (UltiKits/UltiSideBar#16).
-- 卸载或重载本模块（`/ul reload UltiSideBar`、`/sidebar reload`，或禁用本模块）现在会先真正执行框架自身的
-  重载/卸载步骤（配置重载、语言刷新、`@ConditionalOnConfig` 漂移报告、命令/监听器清理），再执行本模块自身的
-  侧边栏服务重载/关闭——此前这些框架步骤会被静默跳过（UltiKits/UltiSideBar#16）。
+- Reloading this module (`/ul reload UltiSideBar`, or `/sidebar reload`) now runs the framework's own
+  reload steps (config reload, language refresh, `@ConditionalOnConfig` drift report, one framework
+  reload log line) before this module's sidebar service reload; unloading it (for example
+  `/upm uninstall UltiSideBar`, or server shutdown) now runs this module's sidebar shutdown and then
+  the framework's command and listener unregistration — previously the module's overrides replaced
+  both framework methods, so those framework steps were silently skipped (UltiKits/UltiSideBar#16).
+- 重载本模块（`/ul reload UltiSideBar` 或 `/sidebar reload`）现在会先执行框架自身的重载步骤（配置重载、
+  语言刷新、`@ConditionalOnConfig` 漂移报告、一条框架重载日志），再执行本模块的侧边栏服务重载；卸载本模块
+  （例如 `/upm uninstall UltiSideBar`，或服务器关闭）现在会先执行本模块的侧边栏关闭，再执行框架的命令与
+  监听器注销——此前本模块的覆盖方法替换了这两个框架方法，这些框架步骤会被静默跳过（UltiKits/UltiSideBar#16）。
