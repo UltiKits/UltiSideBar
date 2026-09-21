@@ -33,7 +33,7 @@ public class UltiSideBar extends UltiToolsPlugin {
     }
 
     @Override
-    public void unregisterSelf() {
+    protected void onUnregister() {
         SideBarService sideBarService = getContext().getBean(SideBarService.class);
         if (sideBarService != null) {
             sideBarService.shutdown();
@@ -42,11 +42,12 @@ public class UltiSideBar extends UltiToolsPlugin {
         getLogger().info(i18n("sidebar_disabled"));
     }
 
+    /**
+     * Refreshes the sidebar service after the framework's final {@code reloadSelf()} has already
+     * reloaded this module's configuration, so this hook must not reload it again.
+     */
     @Override
-    public void reloadSelf() {
-        // Reload all configs
-        getConfigManager().reloadConfigs(this);
-
+    protected void onReload() {
         SideBarService sideBarService = getContext().getBean(SideBarService.class);
         if (sideBarService != null) {
             sideBarService.reload();

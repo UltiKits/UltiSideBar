@@ -16,7 +16,9 @@ for UAT execution and issue reconciliation — the public description of these f
   not a re-derived slug. An ID changes only when the feature's identity changes, never on
   rewording. IDs are unique within a repository.
 - **Kind**, exactly these eight values: `command`, `config`, `event`, `gui`, `scheduled`,
-  `placeholder`, `persistence`, `gate`. Each maps one-to-one onto a reconciliation-table line.
+  `placeholder`, `persistence`, `gate`. Each maps one-to-one onto a reconciliation-table line,
+  except the two `ultisidebar.lifecycle.*` `event` rows under `## Lifecycle Hooks`, which are
+  framework-invoked lifecycle hooks with no annotation site to reconcile against.
   This module has no `gui` rows (no GUI page class — a Bukkit scoreboard sidebar is not an
   inventory), no `scheduled` rows (this module's periodic content refresh is a hand-rolled
   `Bukkit.getScheduler().runTaskTimer` call inside `SideBarService#startUpdateTask`, NOT a
@@ -97,6 +99,10 @@ matches the `@CmdMapping` annotation-site count exactly (5 against 5); its event
 against 3 handler methods, because `onWorldChange` implements two independently observable
 behaviours (see `## Sidebar Lifecycle Events` below), with the reason stated once here and in the
 reconciliation table.
+The two further `event`-Kind rows under `## Lifecycle Hooks` are not `@EventHandler` sites and are
+not counted against that line: they are the framework-invoked `UltiSideBar#onReload()`/
+`#onUnregister()` lifecycle hooks, catalogued as `event` because the framework, not a player command
+or config read, triggers them.
 
 ## Sidebar Commands
 
@@ -121,7 +127,7 @@ short-circuits.
 | ultisidebar.sidebar.toggle | Toggle the sender's own sidebar scoreboard on or off, based on its CURRENT persisted state (see `ultisidebar.sidebar.preference-persistence`), console refused before this method runs (`@CmdTarget(PLAYER)` on this mapping) | command | `/sidebar toggle` (alias `/sb toggle`) | ultisidebar.toggle | player | player | brief | SideBarCommand#toggle |
 | ultisidebar.sidebar.on | Explicitly enable the sender's sidebar scoreboard; unlike `Modules/UltiEssentials`'s equivalent `/scoreboard on`, this method has NO "already enabled" branch — running it while already on unconditionally rebuilds the scoreboard object and sends the same success message again, it is not a no-op with a distinct message | command | `/sidebar on` | ultisidebar.toggle | player | player | brief | SideBarCommand#on |
 | ultisidebar.sidebar.off | Explicitly disable the sender's sidebar scoreboard; like `.on`, has no "already disabled" branch — running it while already off unconditionally resets the sender to the server's main scoreboard and sends the same success message again | command | `/sidebar off` | ultisidebar.toggle | player | player | brief | SideBarCommand#off |
-| ultisidebar.sidebar.reload | Reload this module's configuration and refresh online players' sidebars — NOT unconditionally "every" one: `SideBarService#init`'s refresh loop only re-enables a player whose preference is enabled AND `config.isDefaultEnabled()` is true, so with `default-enabled: false` an online player with an explicitly-enabled preference is removed by the preceding `shutdown()` and NOT restored (`UltiKits/UltiSideBar#20`, filed, not fixed here, see `ultisidebar.config.sidebar.default-enabled`'s own row). Also gated by TWO permission checks — see this row's own Permission cell for the mechanism split. Delegates to `UltiToolsPlugin#reloadSelf()`, which this module OVERRIDES without calling `super.reloadSelf()` — the language catalogue is never re-created and `@ConditionalOnConfig` drift is never reported by this reload path, even though config values and the sidebar service itself DO refresh (`UltiKits/UltiSideBar#16`, filed, not fixed here) | command | `/sidebar reload` | ultisidebar.toggle + ultisidebar.admin | both | admin | detailed | SideBarCommand#reload |
+| ultisidebar.sidebar.reload | Reload this module's configuration and refresh online players' sidebars — NOT unconditionally "every" one: `SideBarService#init`'s refresh loop only re-enables a player whose preference is enabled AND `config.isDefaultEnabled()` is true, so with `default-enabled: false` an online player with an explicitly-enabled preference is removed by the preceding `shutdown()` and NOT restored (`UltiKits/UltiSideBar#20`, filed, not fixed here, see `ultisidebar.config.sidebar.default-enabled`'s own row). Also gated by TWO permission checks — see this row's own Permission cell for the mechanism split. Delegates to `UltiToolsPlugin#reloadSelf()`, a `final` framework template method as of UltiTools 6.3.0 (`UltiKits/UltiSideBar#16`): it reloads this module's configuration (once — this module no longer reloads it itself), re-creates the language catalogue from this module's language files, reports `@ConditionalOnConfig` drift, logs the framework's own `Module 'UltiSideBar' reloaded.` line, and only then calls this module's `onReload()` hook (see `ultisidebar.lifecycle.reload`). A change to the framework's `language` SETTING in `plugins/UltiTools/config.yml` is NOT picked up by this path — the catalogue is rebuilt for the language code read from the framework's cached `config.yml`, which only a bare `/ul reload` or a restart re-reads (`UltiKits/UltiTools-Reborn#502`, filed, not fixed here). Each reload also leaves one more configuration change listener registered on `SideBarConfig`, so every later reload rebuilds each enabled online sidebar once per accumulated listener (`UltiKits/UltiSideBar#21`, filed, not fixed here) | command | `/sidebar reload` | ultisidebar.toggle + ultisidebar.admin | both | admin | detailed | SideBarCommand#reload |
 | ultisidebar.sidebar.help | Print the command's own help lines (title, toggle, on, off — plus reload, only if the sender holds `ultisidebar.admin`); reachable both as the bare `/sidebar` (a real, empty-format `@CmdMapping`) and as `/sidebar help` (the framework's own literal-`help` short-circuit, routed to the identical method) | command | `/sidebar` (bare) or `/sidebar help` | ultisidebar.toggle | both | player | brief | SideBarCommand#help |
 
 ## Sidebar Lifecycle Events
@@ -144,6 +150,24 @@ rows against 3 methods.
 | ID | Feature | Kind | How to reach | Permission | Target | Tier | Manual | Source |
 |---|---|---|---|---|---|---|---|---|
 | ultisidebar.sidebar.preference-persistence | A player's sidebar enabled/disabled preference (set via `/sidebar toggle`/`on`/`off`) survives a server restart — backed by `SideBarPreference` (`@Table("sidebar_preferences")`) through the framework's own `DataOperator`, written synchronously at the moment of the toggle, not deferred to shutdown. If duplicate rows ever exist for one player (e.g. from an external data-store edit), the service deterministically picks the row with the lexicographically-smallest entity id as canonical, rather than depending on undefined query-result ordering | persistence | run `/sidebar off`, restart the server, run `/sidebar toggle` | n/a | n/a | player | brief | SideBarService#isSidebarEnabledInDatabase, SideBarService#setSidebarEnabledInDatabase, SideBarService#selectCanonicalPreference, SideBarPreference |
+
+## Lifecycle Hooks
+
+As of UltiTools 6.3.0 `UltiToolsPlugin#reloadSelf()`/`#unregisterSelf()` are `final`; this module
+overrides the `onReload()`/`onUnregister()` hooks they call (`UltiKits/UltiSideBar#16`). Reload order:
+`ConfigManager#reloadConfigs`, language catalogue refresh, `@ConditionalOnConfig` drift report,
+`Module 'UltiSideBar' reloaded.`, then `onReload()`. Unload order: `onUnregister()`, then command
+unregistration, then listener unregistration. Before the migration this module replaced both
+methods. Its reload override reloaded configuration itself (`origin/master` `UltiSideBar.java:48`)
+but skipped the language refresh. Its unload override made `/upm uninstall UltiSideBar` skip both
+command and listener unregistration. Server shutdown was unaffected: the framework ran its own command
+and listener cleanup there independently of the override. The drift report and the reload log line are new in 6.3.0.
+Configuration is reloaded once per reload both before and after the migration.
+
+| ID | Feature | Kind | How to reach | Permission | Target | Tier | Manual | Source |
+|---|---|---|---|---|---|---|---|---|
+| ultisidebar.lifecycle.reload | After the framework's `reloadSelf()` has reloaded this module's configuration, refreshed its language catalogue, reported drift and logged `Module 'UltiSideBar' reloaded.`, rebuild the sidebar service (`SideBarService#reload()`: cancel the update task and remove every sidebar, then re-initialise and re-enable the sidebar of each online player whose preference is enabled while `default-enabled` is `true` — see `ultisidebar.config.sidebar.default-enabled` and `UltiKits/UltiSideBar#20`) and log `sidebar_reloaded`; the hook itself never reloads configuration | event | `/ul reload UltiSideBar`, or `/sidebar reload` (both call the framework's `reloadSelf()`) | n/a | n/a | admin | brief | UltiSideBar#onReload, SideBarService#reload |
+| ultisidebar.lifecycle.unload | When the module is unloaded, shut the sidebar service down (`SideBarService#shutdown()`: cancel the periodic update task and reset every online player to the server's main scoreboard) and log `sidebar_disabled`, before the framework's own command and listener cleanup for this module | event | `/upm uninstall UltiSideBar` (framework `PluginInstallUtils#uninstallPlugin` calls `unregisterSelf()`, which invokes this hook first) | n/a | n/a | admin | brief | UltiSideBar#onUnregister, SideBarService#shutdown |
 
 ## Configuration
 
