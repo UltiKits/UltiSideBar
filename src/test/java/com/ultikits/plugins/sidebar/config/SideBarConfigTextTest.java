@@ -54,7 +54,7 @@ import static org.mockito.Mockito.when;
 
 /**
  * {@code config/sidebar.yml} holds the sidebar's title and lines in the server's language, and the
- * sidebar shows what the file holds (maintainer decision 2026-09-25, 17-CONTEXT D-16; UltiSideBar#24).
+ * sidebar shows what the file holds (maintainer decision 2026-09-25; UltiSideBar#24).
  * A value that is still built-in text — any language's text from this jar, or a default an earlier
  * version shipped — follows {@code language} at enable and on reload, in both directions; anything else
  * is the operator's and is kept byte for byte. Every case runs the framework's real
