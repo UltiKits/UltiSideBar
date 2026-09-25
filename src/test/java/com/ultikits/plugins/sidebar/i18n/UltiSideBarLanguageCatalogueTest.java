@@ -77,6 +77,12 @@ class UltiSideBarLanguageCatalogueTest {
             //                 + "everything else to backup.reason.unknown",
             //         "backup.reason.manual", "backup.reason.auto", "backup.reason.death",
             //         "backup.reason.quit", "backup.reason.admin", "backup.reason.unknown")
+            new DynamicSite("src/main/java/com/ultikits/plugins/sidebar/service/SideBarService.java",
+                    "::i18n",
+                    "SideBarService#init passes plugin::i18n to SideBarConfig#materializeText, which asks it "
+                            + "for exactly TITLE_KEY and LINES_KEY (maintainer decision 2026-09-25, config text "
+                            + "written in the server's language)",
+                    "sidebar_default_title", "sidebar_default_lines")
     ));
 
     private static List<SourceFile> sources;
