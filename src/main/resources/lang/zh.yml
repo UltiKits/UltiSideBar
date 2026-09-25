@@ -19,8 +19,9 @@ sidebar_help_on: "§e/sidebar on§f - 开启侧边栏"
 sidebar_help_off: "§e/sidebar off§f - 关闭侧边栏"
 sidebar_help_reload: "§e/sidebar reload§f - 重载配置"
 
-# 默认侧边栏标题，在 config/sidebar.yml 的 title 留空时显示
+# 侧边栏标题和内容行：仍为内置文本时，以此语言写入 config/sidebar.yml；内容行为一个条目，以 \n 分隔
 sidebar_default_title: "&6&l我的服务器"
+sidebar_default_lines: "&7欢迎, &f%player_name%\n\n&e在线人数: &f%server_online%/%server_max_players%\n&e世界: &f%player_world%\n\n&e金币: &f%vault_eco_balance_formatted%\n&ePing: &f%player_ping%ms\n\n&7服务器时间\n&f%server_time_HH:mm:ss%\n\n&6play.example.com"
 
 # 控制台消息
 sidebar_log_defaults_save_failed: "替换旧版默认值后保存 sidebar.yml 失败：{ERROR}"

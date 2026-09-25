@@ -69,9 +69,11 @@ public class SideBarService {
         // forever without this explicit, exact-match rewrite. Runs again on every reload() (this
         // method is also called from reload()), which is harmless: once migrated, the exact-match
         // check finds nothing left to rewrite.
-        // The same exact-match rewrite also blanks the title every earlier version shipped, so the
-        // language file's title takes over (maintainer ruling 2026-09-24 (d)).
-        if (config.migrateLegacyDefaults()) {
+        // The same pass writes the title and lines in the server's language while they are still
+        // built-in text (maintainer decision 2026-09-25): this method runs from registerSelf() and from
+        // onReload() via reload(), both after the module's language is loaded -- never from the change
+        // listener below, which the framework fires before it reloads the language.
+        if (config.materializeText(plugin::i18n)) {
             try {
                 config.save();
             } catch (IOException e) {

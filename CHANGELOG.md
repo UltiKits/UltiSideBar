@@ -9,18 +9,18 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
-- The sidebar title now follows the server's `language` setting. `title` in `config/sidebar.yml` now
-  ships blank, and while it is blank the sidebar shows the language file's title (`My Server` under
-  `language: en`). On start-up and on every reload, a `title` that is exactly the title earlier
-  versions shipped is blanked and the file saved, so an upgraded server shows the translated title
-  too; any other title is kept as written. `lines` is unchanged: it is the server's own layout and is
-  shown as written.
+- The sidebar's title and lines settings in `config/sidebar.yml` are written in the server's
+  language when the module starts, and the file is what the sidebar shows (`title: '&6&lMy Server'`
+  and English lines under `language: en`). A setting that is still built-in text — in any language,
+  or a default an earlier version shipped — follows `language`: it is rewritten when the module starts
+  or after `/ul reload`. A setting you edited is kept. To keep a built-in text but stop it following
+  `language`, change at least one character (UltiKits/UltiSideBar#24).
 - The console warnings for a missing PlaceholderAPI and for a `sidebar.yml` that cannot be saved now
   follow the `language` setting.
-- 侧边栏标题现在跟随服务器的 `language` 设置。`config/sidebar.yml` 中的 `title` 默认留空，留空时侧边栏显示
-  语言文件中的标题（`language: en` 下为 `My Server`）。启动时和每次重载时，若 `title` 与旧版本出厂的标题
-  完全相同，会被清空并保存文件，使升级后的服务器同样显示翻译后的标题；其他任何标题都按原样保留。`lines`
-  不变：它是服务器自己的布局，按原样显示。
+- `config/sidebar.yml` 中的侧边栏标题与内容行设置在模块启动时按服务器语言写入，文件内容即侧边栏显示的内容
+  （`language: en` 下为 `title: '&6&lMy Server'` 与英文内容行）。仍为内置文本（任一语言的内置文本，或旧版本的
+  出厂默认值）的设置会跟随 `language`：模块启动或执行 `/ul reload` 后改写为当前语言的文本。你改过的设置保持不变。
+  若想保留内置文本又不让它跟随语言，请至少改动一个字符（UltiKits/UltiSideBar#24）。
 - 缺少 PlaceholderAPI 以及 `sidebar.yml` 无法保存时的控制台警告现在跟随 `language` 设置。
 
 ### Fixed

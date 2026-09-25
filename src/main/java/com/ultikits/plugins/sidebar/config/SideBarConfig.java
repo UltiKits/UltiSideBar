@@ -6,9 +6,10 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.function.Function;
 
 import com.ultikits.ultitools.abstracts.AbstractConfigEntity;
-import com.ultikits.ultitools.abstracts.UltiToolsPlugin;
 import com.ultikits.ultitools.annotations.ConfigEntity;
 import com.ultikits.ultitools.annotations.ConfigEntry;
 import com.ultikits.ultitools.annotations.config.NotEmpty;
@@ -32,11 +33,12 @@ public class SideBarConfig extends AbstractConfigEntity {
     @ConfigEntry(path = "enabled", comment = "启用侧边栏")
     private boolean enabled = true;
 
-    // Blank by default: a blank title shows the language file's text in the server's language
-    // (getTitle). Not @NotEmpty, which would refuse a blank value (maintainer ruling 2026-09-24 (d)).
-    @Size(max = 32)
-    @ConfigEntry(path = "title", comment = "侧边栏标题（支持颜色代码和变量；留空则使用语言文件中的文本）")
-    private String title = "";
+    // The Java default is the title earlier versions shipped: the framework writes it for a missing
+    // key and materializeText() then rewrites it in the server's language.
+    @NotEmpty
+    @Size(min = 1, max = 32)
+    @ConfigEntry(path = "title", comment = "侧边栏标题（支持颜色代码和变量）")
+    private String title = SHIPPED_TITLE;
 
     @Range(min = 1, max = 1200)
     @ConfigEntry(path = "update-interval", comment = "更新间隔（tick，20 tick = 1秒）")
@@ -45,20 +47,7 @@ public class SideBarConfig extends AbstractConfigEntity {
     @NotEmpty
     @Size(min = 1, max = 15)
     @ConfigEntry(path = "lines", comment = "侧边栏内容（支持 PlaceholderAPI 变量）")
-    private List<String> lines = Arrays.asList(
-        "&7欢迎, &f%player_name%",
-        "",
-        "&e在线人数: &f%server_online%/%server_max_players%",
-        "&e世界: &f%player_world%",
-        "",
-        "&e金币: &f%vault_eco_balance_formatted%",
-        "&ePing: &f%player_ping%ms",
-        "",
-        "&7服务器时间",
-        "&f%server_time_HH:mm:ss%",
-        "",
-        "&6play.example.com"
-    );
+    private List<String> lines = new ArrayList<>(SHIPPED_LINES);
 
     @ConfigEntry(path = "world-blacklist", comment = "禁用侧边栏的世界")
     private List<String> worldBlacklist = Collections.singletonList("world_event");
@@ -70,47 +59,39 @@ public class SideBarConfig extends AbstractConfigEntity {
         super("config/sidebar.yml");
     }
 
-    /**
-     * The title every earlier version shipped, kept only so {@link #migrateLegacyDefaults()} can
-     * recognise it in an upgraded operator's file and blank it; it is compared, never shown.
-     */
-    private static final String SHIPPED_TITLE = "&6&l我的服务器";
+    /** The catalogue key of the title's text in the server's language. */
+    static final String TITLE_KEY = "sidebar_default_title";
+
+    /** The catalogue key of the lines' text in the server's language, one entry with the lines separated by "\n". */
+    static final String LINES_KEY = "sidebar_default_lines";
 
     /**
-     * The sidebar title: the configured value, or the language file's {@code sidebar_default_title}
-     * in the server's language when the value is blank. Resolved each time it is read, never while
-     * the configuration reloads: the framework reloads configuration before it rebuilds the language,
-     * so a value resolved during a reload would come from the old language (maintainer ruling
-     * 2026-09-24 (d)).
+     * Writes the title and lines in the server's language (maintainer decision 2026-09-25): first the
+     * exact-match line fixes of {@link #migrateLegacyDefaultLines()}, then each of the two settings is
+     * replaced with {@code text}'s current text when it is still built-in text -- the title or lines an
+     * earlier version shipped, or this jar's text for it in any language -- and differs from the
+     * current text. Any other value is the operator's and is kept. Idempotent. Must run after the
+     * module's language is loaded (enable and {@code onReload()}), never from a change listener; the
+     * caller saves the file when this returns {@code true}.
      *
-     * @return the title to show, before colour codes and placeholders are applied
-     */
-    public String getTitle() {
-        return title == null || title.trim().isEmpty() ? i18n("sidebar_default_title") : title;
-    }
-
-    /**
-     * The language file's text for {@code key}, read through the plugin this configuration was bound
-     * to at load. Before that binding there is no language to read, so the key itself is returned, as
-     * the framework renders a missing key.
-     */
-    private String i18n(String key) {
-        UltiToolsPlugin plugin = getUltiToolsPlugin();
-        return plugin == null ? key : plugin.i18n(key);
-    }
-
-    /**
-     * Replaces every value an earlier version shipped as a default: the stale {@code lines} entries
-     * ({@link #migrateLegacyDefaultLines()}) and the old shipped title, which is blanked so the
-     * language file's title takes over in the server's language. Any other value is the operator's
-     * and is kept. Idempotent. The caller saves the file when this returns {@code true}.
-     *
+     * @param text the module's {@code i18n}: catalogue key to text in the server's language
      * @return {@code true} if at least one value was rewritten
      */
-    public boolean migrateLegacyDefaults() {
+    public boolean materializeText(Function<String, String> text) {
         boolean changed = migrateLegacyDefaultLines();
-        if (SHIPPED_TITLE.equals(title)) {
-            title = "";
+        Map<String, Map<String, String>> jar = ConfigTextDefaults.jarCatalogues(SideBarConfig.class);
+
+        String newTitle = ConfigTextDefaults.materialize(title, ConfigTextDefaults.currentText(text, "", TITLE_KEY),
+                ConfigTextDefaults.tracked(jar, "", TITLE_KEY, SHIPPED_TITLE));
+        if (!Objects.equals(newTitle, title)) {
+            title = newTitle;
+            changed = true;
+        }
+
+        List<String> newLines = ConfigTextDefaults.materializeLines(lines, ConfigTextDefaults.currentLines(text, LINES_KEY),
+                ConfigTextDefaults.trackedLines(jar, LINES_KEY, SHIPPED_LINES_FIRST, SHIPPED_LINES_SECOND, SHIPPED_LINES));
+        if (!Objects.equals(newLines, lines)) {
+            lines = newLines;
             changed = true;
         }
         return changed;
@@ -127,8 +108,8 @@ public class SideBarConfig extends AbstractConfigEntity {
     private static final String LEGACY_WORLD_NAME_LINE = "&e世界: &f%world_name%";
 
     /**
-     * The corrected default that replaces {@link #LEGACY_WORLD_NAME_LINE}, kept in sync by hand
-     * with the "lines" default above.
+     * The corrected default that replaces {@link #LEGACY_WORLD_NAME_LINE}; part of
+     * {@link #SHIPPED_LINES}, the "lines" default.
      */
     private static final String CURRENT_WORLD_NAME_LINE = "&e世界: &f%player_world%";
 
@@ -143,9 +124,40 @@ public class SideBarConfig extends AbstractConfigEntity {
 
     /**
      * The corrected default that replaces {@link #LEGACY_SERVER_TIME_LINE} with the unambiguous
-     * 24-hour pattern, kept in sync by hand with the "lines" default above.
+     * 24-hour pattern; part of {@link #SHIPPED_LINES}, the "lines" default.
      */
     private static final String CURRENT_SERVER_TIME_LINE = "&f%server_time_HH:mm:ss%";
+
+    /**
+     * The title every earlier version shipped. The Java default, and one of the values
+     * {@link #materializeText} recognises as built-in text in an operator's file; compared byte for byte.
+     */
+    private static final String SHIPPED_TITLE = "&6&l我的服务器";
+
+    // The lines every shipped default is built from. Each Chinese literal appears once here and is
+    // compared byte for byte by materializeText(); the text written into a file comes from the language
+    // file's sidebar_default_lines.
+    private static final String WELCOME_LINE = "&7欢迎, &f%player_name%";
+    private static final String ONLINE_LINE = "&e在线人数: &f%server_online%/%server_max_players%";
+    private static final String BALANCE_LINE = "&e金币: &f%vault_eco_balance_formatted%";
+    private static final String PING_LINE = "&ePing: &f%player_ping%ms";
+    private static final String SERVER_TIME_LABEL_LINE = "&7服务器时间";
+    private static final String ADDRESS_LINE = "&6play.example.com";
+
+    /** The lines the first version shipped: the invalid world line and the 12-hour time line. */
+    private static final List<String> SHIPPED_LINES_FIRST = Collections.unmodifiableList(Arrays.asList(
+            WELCOME_LINE, "", ONLINE_LINE, LEGACY_WORLD_NAME_LINE, "", BALANCE_LINE, PING_LINE,
+            "", SERVER_TIME_LABEL_LINE, LEGACY_SERVER_TIME_LINE, "", ADDRESS_LINE));
+
+    /** The lines shipped after UltiKits/UltiSideBar#13 fixed the world line, still with the 12-hour time line. */
+    private static final List<String> SHIPPED_LINES_SECOND = Collections.unmodifiableList(Arrays.asList(
+            WELCOME_LINE, "", ONLINE_LINE, CURRENT_WORLD_NAME_LINE, "", BALANCE_LINE, PING_LINE,
+            "", SERVER_TIME_LABEL_LINE, LEGACY_SERVER_TIME_LINE, "", ADDRESS_LINE));
+
+    /** The lines the last version shipped: the Java default of {@code lines}. */
+    private static final List<String> SHIPPED_LINES = Collections.unmodifiableList(Arrays.asList(
+            WELCOME_LINE, "", ONLINE_LINE, CURRENT_WORLD_NAME_LINE, "", BALANCE_LINE, PING_LINE,
+            "", SERVER_TIME_LABEL_LINE, CURRENT_SERVER_TIME_LINE, "", ADDRESS_LINE));
 
     /**
      * Every byte-identical legacy default line this plugin has ever shipped, mapped to its
