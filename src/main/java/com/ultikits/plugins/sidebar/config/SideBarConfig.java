@@ -70,7 +70,8 @@ public class SideBarConfig extends AbstractConfigEntity {
      * exact-match line fixes of {@link #migrateLegacyDefaultLines()}, then each of the two settings is
      * replaced with {@code text}'s current text when it is still built-in text -- the title or lines an
      * earlier version shipped, or this jar's text for it in any language -- and differs from the
-     * current text. Any other value is the operator's and is kept. Idempotent. Must run after the
+     * current text, and fits the setting's own limits. Any other value is the operator's and is kept.
+     * Idempotent. Must run after the
      * module's language is loaded (enable and {@code onReload()}), never from a change listener; the
      * caller saves the file when this returns {@code true}.
      *
@@ -81,14 +82,16 @@ public class SideBarConfig extends AbstractConfigEntity {
         boolean changed = migrateLegacyDefaultLines();
         Map<String, Map<String, String>> jar = ConfigTextDefaults.jarCatalogues(SideBarConfig.class);
 
-        String newTitle = ConfigTextDefaults.materialize(title, ConfigTextDefaults.currentText(text, "", TITLE_KEY),
+        String newTitle = ConfigTextDefaults.materialize(SideBarConfig.class, "title", title,
+                ConfigTextDefaults.currentText(text, "", TITLE_KEY),
                 ConfigTextDefaults.tracked(jar, "", TITLE_KEY, SHIPPED_TITLE));
         if (!Objects.equals(newTitle, title)) {
             title = newTitle;
             changed = true;
         }
 
-        List<String> newLines = ConfigTextDefaults.materializeLines(lines, ConfigTextDefaults.currentLines(text, LINES_KEY),
+        List<String> newLines = ConfigTextDefaults.materializeLines(SideBarConfig.class, "lines", lines,
+                ConfigTextDefaults.currentLines(text, LINES_KEY),
                 ConfigTextDefaults.trackedLines(jar, LINES_KEY, SHIPPED_LINES_FIRST, SHIPPED_LINES_SECOND, SHIPPED_LINES));
         if (!Objects.equals(newLines, lines)) {
             lines = newLines;

@@ -4,6 +4,9 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
+import com.ultikits.ultitools.annotations.config.NotEmpty;
+import com.ultikits.ultitools.annotations.config.Pattern;
+import com.ultikits.ultitools.annotations.config.Size;
 
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -12,6 +15,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Field;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -44,7 +48,13 @@ import java.util.jar.JarFile;
  * class loader and not from the language files on disk: every internal module shares one class
  * loader, so a resource lookup could return another module's {@code lang/en.yml}, and the disk copy
  * is the operator's to edit. Files are flattened the way the framework's {@code Language} reads them:
- * JSON as a flat map, YAML with nested keys joined by {@code '.'}, string values only.
+ * JSON as a flat map with every primitive value read as its text (Gson's {@code Map<String, String>}),
+ * YAML with nested keys joined by {@code '.'} and string values only.
+ * <p>
+ * A current text that would break the field's own {@code @NotEmpty}, {@code @Size} or {@code @Pattern}
+ * constraint (for example an operator's over-long title in the language file on disk) is never
+ * written: the framework validates the file on the next load and would refuse the module. The value is
+ * kept instead, and the module keeps showing it, so file and behaviour still agree.
  * <p>
  * The caller rewrites its fields with the returned values and saves the file once when anything
  * changed. It must run after the module's language is loaded ({@code registerSelf()} and
@@ -96,6 +106,56 @@ public final class ConfigTextDefaults {
             return value;
         }
         return new ArrayList<>(current);
+    }
+
+    /**
+     * {@link #materialize(String, String, Collection)} for {@code entity}'s field {@code field}: a
+     * replacement that would break the field's constraints ({@link #satisfiesConstraints}) is not made.
+     */
+    public static String materialize(Class<?> entity, String field, String value, String current,
+                                     Collection<String> tracked) {
+        String result = materialize(value, current, tracked);
+        return result == value || satisfiesConstraints(entity, field, result) ? result : value;
+    }
+
+    /**
+     * {@link #materializeLines(List, List, Collection)} for {@code entity}'s field {@code field}: a
+     * replacement that would break the field's constraints ({@link #satisfiesConstraints}) is not made.
+     */
+    public static List<String> materializeLines(Class<?> entity, String field, List<String> value, List<String> current,
+                                                Collection<List<String>> tracked) {
+        List<String> result = materializeLines(value, current, tracked);
+        return result == value || satisfiesConstraints(entity, field, result) ? result : value;
+    }
+
+    /**
+     * Whether {@code candidate} satisfies the {@code @NotEmpty}, {@code @Size} and {@code @Pattern}
+     * constraints on {@code entity}'s declared field {@code field}, checked as the framework's
+     * {@code AbstractConfigEntity#validateFields} checks them: not blank; string length or collection
+     * size within {@code [min, max]}; a string matching the whole regex.
+     *
+     * @throws IllegalArgumentException when {@code entity} declares no field of that name
+     */
+    public static boolean satisfiesConstraints(Class<?> entity, String field, Object candidate) {
+        Field f;
+        try {
+            f = entity.getDeclaredField(field);
+        } catch (NoSuchFieldException e) {
+            throw new IllegalArgumentException(entity.getName() + " has no field " + field, e);
+        }
+        if (f.getAnnotation(NotEmpty.class) != null && (candidate == null || candidate.toString().trim().isEmpty())) {
+            return false;
+        }
+        Size size = f.getAnnotation(Size.class);
+        if (size != null && candidate != null) {
+            int length = candidate instanceof Collection ? ((Collection<?>) candidate).size()
+                    : candidate instanceof String ? ((String) candidate).length() : -1;
+            if (length >= 0 && (length < size.min() || length > size.max())) {
+                return false;
+            }
+        }
+        Pattern pattern = f.getAnnotation(Pattern.class);
+        return pattern == null || !(candidate instanceof String) || ((String) candidate).matches(pattern.regex());
     }
 
     /**
@@ -222,7 +282,7 @@ public final class ConfigTextDefaults {
             if (object != null) {
                 for (Map.Entry<String, JsonElement> e : object.entrySet()) {
                     JsonElement v = e.getValue();
-                    if (v != null && v.isJsonPrimitive() && v.getAsJsonPrimitive().isString()) {
+                    if (v != null && v.isJsonPrimitive()) {
                         result.put(e.getKey(), v.getAsString());
                     }
                 }
