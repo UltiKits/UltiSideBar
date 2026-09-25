@@ -119,7 +119,7 @@ public class SideBarConfig extends AbstractConfigEntity {
 
     /**
      * The pre-6.3.0 shipped default server-time line, which used the ambiguous 12-hour pattern
-     * {@code hh:mm:ss} with no AM/PM marker (PR #15 round-3 review). Same persistence problem as
+     * {@code hh:mm:ss} with no AM/PM marker (found reviewing PR #15). Same persistence problem as
      * {@link #LEGACY_WORLD_NAME_LINE}: {@code AbstractConfigEntity.init()} preserves this exact
      * string in {@code sidebar.yml} on every server that has ever started an older version of
      * this plugin, unless it is rewritten explicitly.
@@ -181,7 +181,7 @@ public class SideBarConfig extends AbstractConfigEntity {
     /**
      * One-time migration for a persisted {@code sidebar.yml} whose {@code lines} list still
      * carries one or more old, invalid shipped defaults tracked in
-     * {@link #LEGACY_LINE_REPLACEMENTS} (issue #13; PR #15 round-3 review extended this from the
+     * {@link #LEGACY_LINE_REPLACEMENTS} (issue #13; a review of PR #15 extended this from the
      * world-name line alone to also cover the 12-hour server-time line). Rewrites only a list
      * entry that is byte-identical to a tracked legacy default -- any operator customisation,
      * including a line that merely mentions a legacy token alongside other text, is left

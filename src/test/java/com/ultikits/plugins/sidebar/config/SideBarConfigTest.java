@@ -405,7 +405,7 @@ class SideBarConfigTest {
         }
 
         @Test
-        @DisplayName("Also rewrites a persisted line byte-identical to the old 12-hour server-time default (PR #15 round-3 review)")
+        @DisplayName("Also rewrites a persisted line byte-identical to the old 12-hour server-time default (found reviewing PR #15)")
         void rewritesLegacyServerTimeLine() throws Exception {
             File configFile = persistLines(Collections.singletonList("&f%server_time_hh:mm:ss%"));
 
