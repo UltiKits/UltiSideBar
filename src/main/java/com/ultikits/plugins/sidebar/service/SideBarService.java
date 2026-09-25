@@ -1,5 +1,6 @@
 package com.ultikits.plugins.sidebar.service;
 
+import com.ultikits.plugins.sidebar.config.ConfigTextDefaults;
 import com.ultikits.plugins.sidebar.config.SideBarConfig;
 import com.ultikits.plugins.sidebar.data.SideBarPreference;
 import com.ultikits.ultitools.abstracts.UltiToolsPlugin;
@@ -71,9 +72,12 @@ public class SideBarService {
         // check finds nothing left to rewrite.
         // The same pass writes the title and lines in the server's language while they are still
         // built-in text (maintainer decision 2026-09-25): this method runs from registerSelf() and from
-        // onReload() via reload(), both after the module's language is loaded -- never from the change
-        // listener below, which the framework fires before it reloads the language.
-        if (config.materializeText(plugin::i18n)) {
+        // onReload() via reload(), both after the framework's language setting is loaded -- never from
+        // the change listener below, which the framework fires before it reloads the language. The text
+        // comes from this jar's own catalogue, not from plugin.i18n (which reads the operator's extracted
+        // language file first), so every value written is one the next pass recognises (ruling O3).
+        if (config.materializeText(ConfigTextDefaults.jarLanguage(SideBarConfig.class,
+                plugin.getLanguageCode())::getLocalizedText)) {
             try {
                 config.save();
             } catch (IOException e) {

@@ -14,13 +14,15 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   and English lines under `language: en`). A setting that is still built-in text — in any language,
   or a default an earlier version shipped — follows `language`: it is rewritten when the module starts
   or after `/ul reload`. A setting you edited is kept. To keep a built-in text but stop it following
-  `language`, change at least one character (UltiKits/UltiSideBar#24).
+  `language`, change at least one character (UltiKits/UltiSideBar#24). The text written is this module's built-in text: edit these settings in `config/sidebar.yml`; an edit of
+  the extracted language file does not change them (earlier versions never read them from the
+  language file either).
 - The console warnings for a missing PlaceholderAPI and for a `sidebar.yml` that cannot be saved now
   follow the `language` setting.
 - `config/sidebar.yml` 中的侧边栏标题与内容行设置在模块启动时按服务器语言写入，文件内容即侧边栏显示的内容
   （`language: en` 下为 `title: '&6&lMy Server'` 与英文内容行）。仍为内置文本（任一语言的内置文本，或旧版本的
   出厂默认值）的设置会跟随 `language`：模块启动或执行 `/ul reload` 后改写为当前语言的文本。你改过的设置保持不变。
-  若想保留内置文本又不让它跟随语言，请至少改动一个字符（UltiKits/UltiSideBar#24）。
+  若想保留内置文本又不让它跟随语言，请至少改动一个字符（UltiKits/UltiSideBar#24）。写入的是本模块的内置文本：请在 `config/sidebar.yml` 中修改这些设置；修改已解压的语言文件不会改变它们（旧版本同样从不从语言文件读取它们）。
 - 缺少 PlaceholderAPI 以及 `sidebar.yml` 无法保存时的控制台警告现在跟随 `language` 设置。
 
 ### Fixed
