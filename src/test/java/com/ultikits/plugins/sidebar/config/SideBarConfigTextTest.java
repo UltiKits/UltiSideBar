@@ -209,7 +209,7 @@ class SideBarConfigTextTest {
     }
 
     @Test
-    @DisplayName("an over-long title or too many lines in the extracted language file never reach sidebar.yml; the jar's text is written and the file still loads (gate-1 WR-01 under orchestrator ruling O3)")
+    @DisplayName("an over-long title or too many lines in the extracted language file never reach sidebar.yml; the jar's text is written and the file still loads")
     void aTextBreakingTheLimitsIsNotWritten() throws Exception {
         language[0] = "en";
         diskOverrides.put("sidebar_default_title", "&6&lA server name far longer than thirty-two characters");
@@ -341,7 +341,7 @@ class SideBarConfigTextTest {
     }
 
     @Test
-    @DisplayName("an operator's edit of the extracted language file is not written into sidebar.yml, so the value keeps following a language switch (orchestrator ruling O3)")
+    @DisplayName("an operator's edit of the extracted language file is not written into sidebar.yml, so the value keeps following a language switch")
     void diskCatalogueEditDoesNotReachTheFile() throws Exception {
         // What the module's i18n answers when the operator edited both entries in lang/en.yml on disk.
         diskOverrides.put("sidebar_default_title", "&6&lEdited Server");

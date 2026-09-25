@@ -14,9 +14,9 @@ real-machine verification, not user-facing documentation.
 - **Columns:** `ID`, `Preconditions`, `Steps`, `Expected`, `Layer`, `Covers`.
 - **ID:** cites its `FEATURES.md` ID verbatim. A negative case suffixes the checklist ID only, as
   `.neg-<slug>` — a negative case still tests the same feature, so the base ID is unchanged.
-- **Layer**, copied verbatim from Laojun's own `ultitools-real-client-uat` skill so no translation
+- **Layer**, copied verbatim from the real-client acceptance tooling's fixed vocabulary so no translation
   step exists at dispatch time: `protocol`, `java-client`, `os-input`, `pixel`, `server`, `human`.
-  **This module's own division of labor across those values (D-19):** a row asserting that the
+  **This module's own division of labor across those values:** a row asserting that the
   sidebar scoreboard shows SPECIFIC lines with SPECIFIC resolved values (placeholder
   substitution, translated colors, the exact title) is `pixel` — a scoreboard's correctness is
   what a player actually sees, and no protocol-layer assertion substitutes for looking at it,
@@ -26,18 +26,16 @@ real-machine verification, not user-facing documentation.
   server-observable without a screenshot. No row in this document is downgraded from `pixel` to
   `protocol` to make it easier to run — an unready pixel harness is a legitimate
   `human-uat-pending` exit; a `protocol` assertion standing in for a rendering claim is not.
-- **Human-authenticated-session rows (D-27b):** none exist in this module — it has no capability
+- **Human-authenticated-session rows:** none exist in this module — it has no capability
   gated behind the maintainer's own UltiCloud panel session or an SMTP-gated recovery flow. Stated
   here for template consistency with the framework's own checklist.
-- **Covers** back-references a Phase 9 GUI-excluded class name; left blank when no such class
-  applies. UltiSideBar is NOT one of the nine modules in Phase 9's GUI-exclusion register
-  (confirmed by reading `.planning/phases/09-module-ecosystem-readiness-and-test-coverage/
-  gui-exclusions/` — no `UltiSideBar.md` file exists there, and no file in that directory names
-  UltiSideBar), so every row below leaves `Covers` blank.
+- **Covers** back-references a GUI class excluded from the JaCoCo coverage gate; left blank when no such class
+  applies. UltiSideBar has no GUI class excluded from the coverage gate (it ships no GUI page),
+  so every row below leaves `Covers` blank.
 - A row whose Preconditions name a prior row must appear after that row in file order — asserted
   mechanically: for every row, every checklist ID cited in its Preconditions cell must have a
-  strictly smaller line number in this file than the row citing it (sweep class 8, D-27a).
-- **Config-per-file rule (D-06):** one checklist row per `@ConfigEntity`-annotated class, never one
+  strictly smaller line number in this file than the row citing it.
+- **Config-per-file rule:** one checklist row per `@ConfigEntity`-annotated class, never one
   row per key. This is the one deliberate exception to the "ID cites its `FEATURES.md` ID
   verbatim" rule above (same exception `Modules/UltiChat/UAT-CHECKLIST.md` and
   `Modules/UltiMenu/UAT-CHECKLIST.md` document for their own config-per-file rows): a
@@ -91,7 +89,7 @@ real-machine verification, not user-facing documentation.
 
 ## Lifecycle Hooks
 
-Both rows below exercise `UltiKits/UltiSideBar#16`'s wave-0 lifecycle-hook migration: the
+Both rows below exercise `UltiKits/UltiSideBar#16`'s lifecycle-hook migration: the
 framework's `reloadSelf()`/`unregisterSelf()` are now `final` template methods, and this module's
 own service reload/shutdown moved into the `onReload()`/`onUnregister()` hooks those methods invoke.
 See `FEATURES.md`'s `## Lifecycle Hooks` section for the sequencing. `ultisidebar.lifecycle.unload`

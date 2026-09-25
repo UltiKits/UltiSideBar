@@ -80,8 +80,8 @@ class UltiSideBarLanguageCatalogueTest {
             new DynamicSite("src/main/java/com/ultikits/plugins/sidebar/service/SideBarService.java",
                     "::getLocalizedText",
                     "SideBarService#init passes the jar catalogue's getLocalizedText (ConfigTextDefaults#jarLanguage) to "
-                            + "SideBarConfig#materializeText, which asks it for exactly TITLE_KEY and LINES_KEY (maintainer "
-                            + "decision 2026-09-25 and orchestrator ruling O3: config text written in the server's language, "
+                            + "SideBarConfig#materializeText, which asks it for exactly TITLE_KEY and LINES_KEY ("
+                            + "config text written in the server's language, "
                             + "from the module jar's own catalogue)",
                     "sidebar_default_title", "sidebar_default_lines")
     ));
@@ -742,7 +742,7 @@ class UltiSideBarLanguageCatalogueTest {
         }
 
         @Test
-        @DisplayName("a call right after a greater-than comparison is a call (gate-1 finding 1)")
+        @DisplayName("a call right after a greater-than comparison is a call")
         void callAfterComparison() {
             SourceFile f = source("boolean m(int a, int b, int c) { return a < b && c > i18n(\"after.gt\").length(); }");
             assertThat(f.sites).extracting(s -> s.literalKey).containsExactly("after.gt");
