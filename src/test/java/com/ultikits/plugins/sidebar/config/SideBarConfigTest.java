@@ -43,10 +43,13 @@ class SideBarConfigTest {
         }
 
         @Test
-        @DisplayName("Should have default title")
-        void title() {
+        @DisplayName("Should ship a blank title, so the language file's title is shown")
+        @SuppressWarnings("PMD.AvoidAccessibilityAlteration")
+        void title() throws Exception {
             SideBarConfig config = createRealConfig();
-            assertThat(config.getTitle()).isEqualTo("&6&l我的服务器");
+            java.lang.reflect.Field field = SideBarConfig.class.getDeclaredField("title");
+            field.setAccessible(true);
+            assertThat(field.get(config)).isEqualTo("");
         }
 
         @Test
