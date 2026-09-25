@@ -69,19 +69,21 @@ public class SideBarService {
         // forever without this explicit, exact-match rewrite. Runs again on every reload() (this
         // method is also called from reload()), which is harmless: once migrated, the exact-match
         // check finds nothing left to rewrite.
-        if (config.migrateLegacyDefaultLines()) {
+        // The same exact-match rewrite also blanks the title every earlier version shipped, so the
+        // language file's title takes over (maintainer ruling 2026-09-24 (d)).
+        if (config.migrateLegacyDefaults()) {
             try {
                 config.save();
             } catch (IOException e) {
-                plugin.getLogger().warn("Failed to persist the sidebar.yml legacy default line "
-                        + "migration: " + e.getMessage());
+                plugin.getLogger().warn(plugin.i18n("sidebar_log_defaults_save_failed")
+                        .replace("{ERROR}", String.valueOf(e.getMessage())));
             }
         }
 
         // Check PlaceholderAPI
         placeholderApiAvailable = Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null;
         if (!placeholderApiAvailable) {
-            plugin.getLogger().warn("PlaceholderAPI not found! Variables will not work.");
+            plugin.getLogger().warn(plugin.i18n("sidebar_log_papi_missing"));
         }
         
         // Register config change listener

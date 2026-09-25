@@ -18,3 +18,10 @@ sidebar_help_toggle: "§e/sidebar toggle§f - 切换侧边栏"
 sidebar_help_on: "§e/sidebar on§f - 开启侧边栏"
 sidebar_help_off: "§e/sidebar off§f - 关闭侧边栏"
 sidebar_help_reload: "§e/sidebar reload§f - 重载配置"
+
+# 默认侧边栏标题，在 config/sidebar.yml 的 title 留空时显示
+sidebar_default_title: "&6&l我的服务器"
+
+# 控制台消息
+sidebar_log_defaults_save_failed: "替换旧版默认值后保存 sidebar.yml 失败：{ERROR}"
+sidebar_log_papi_missing: "未找到 PlaceholderAPI！变量将无法使用。"

@@ -18,3 +18,10 @@ sidebar_help_toggle: "§e/sidebar toggle§f - Toggle sidebar"
 sidebar_help_on: "§e/sidebar on§f - Enable sidebar"
 sidebar_help_off: "§e/sidebar off§f - Disable sidebar"
 sidebar_help_reload: "§e/sidebar reload§f - Reload configuration"
+
+# Default sidebar title, shown while config/sidebar.yml leaves title blank
+sidebar_default_title: "&6&lMy Server"
+
+# Console messages
+sidebar_log_defaults_save_failed: "Failed to save sidebar.yml after replacing old shipped defaults: {ERROR}"
+sidebar_log_papi_missing: "PlaceholderAPI not found! Variables will not work."
