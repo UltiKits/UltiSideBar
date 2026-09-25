@@ -209,7 +209,7 @@ class SideBarConfigTextTest {
     }
 
     @Test
-    @DisplayName("a language-file text that would break the setting's limits (title over 32 characters, more than 15 lines) is not written; the file keeps its value (gate 1 WR-01)")
+    @DisplayName("an over-long title or too many lines in the extracted language file never reach sidebar.yml; the jar's text is written and the file still loads (gate-1 WR-01 under orchestrator ruling O3)")
     void aTextBreakingTheLimitsIsNotWritten() throws Exception {
         language[0] = "en";
         diskOverrides.put("sidebar_default_title", "&6&lA server name far longer than thirty-two characters");
@@ -219,15 +219,12 @@ class SideBarConfigTextTest {
         }
         diskOverrides.put("sidebar_default_lines", sixteen.toString());
         write(SHIPPED_TITLE, SHIPPED_LINES_3);
-        SideBarConfig config = spy(load());
-        byte[] before = bytes();
+        SideBarConfig config = load();
 
         start(config);
 
-        assertThat(bytes()).isEqualTo(before);
-        assertThat(config.getTitle()).isEqualTo(SHIPPED_TITLE);
-        assertThat(config.getLines()).containsExactlyElementsOf(SHIPPED_LINES_3);
-        verify(config, never()).save();
+        assertThat(config.getTitle()).isEqualTo(EN_TITLE);
+        assertThat(config.getLines()).containsExactlyElementsOf(EN_LINES);
         // The file still loads: the framework's own validation accepts what is on disk.
         load();
     }
@@ -341,6 +338,27 @@ class SideBarConfigTextTest {
             assertThat(onDisk().getStringList("lines")).as(code).containsExactly("only", "me");
             verify(config, never()).save();
         }
+    }
+
+    @Test
+    @DisplayName("an operator's edit of the extracted language file is not written into sidebar.yml, so the value keeps following a language switch (orchestrator ruling O3)")
+    void diskCatalogueEditDoesNotReachTheFile() throws Exception {
+        // What the module's i18n answers when the operator edited both entries in lang/en.yml on disk.
+        diskOverrides.put("sidebar_default_title", "&6&lEdited Server");
+        diskOverrides.put("sidebar_default_lines", "edited\nlines");
+        language[0] = "en";
+        write(SHIPPED_TITLE, SHIPPED_LINES_3);
+        SideBarConfig config = load();
+        SideBarService service = start(config);
+
+        assertThat(onDisk().getString("title")).as("en: the jar's English text, not the disk edit").isEqualTo(EN_TITLE);
+        assertThat(onDisk().getStringList("lines")).containsExactlyElementsOf(EN_LINES);
+
+        language[0] = "zh";
+        reload(config, service);
+
+        assertThat(onDisk().getString("title")).as("after a switch to zh the value follows").isEqualTo(SHIPPED_TITLE);
+        assertThat(onDisk().getStringList("lines")).containsExactlyElementsOf(SHIPPED_LINES_3);
     }
 
     @Test
@@ -503,6 +521,9 @@ class SideBarConfigTextTest {
             }
             if ("getLogger".equals(name)) {
                 return logger;
+            }
+            if ("getLanguageCode".equals(name)) {
+                return language[0];
             }
             return Answers.RETURNS_DEFAULTS.answer(invocation);
         });
