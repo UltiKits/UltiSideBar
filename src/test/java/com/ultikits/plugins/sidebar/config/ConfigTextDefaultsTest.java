@@ -1,5 +1,9 @@
 package com.ultikits.plugins.sidebar.config;
 
+import com.ultikits.ultitools.annotations.config.NotEmpty;
+import com.ultikits.ultitools.annotations.config.Pattern;
+import com.ultikits.ultitools.annotations.config.Size;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -23,6 +27,7 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * The config text materializer: which values count as built-in text, how a list is compared, and
@@ -152,6 +157,55 @@ class ConfigTextDefaultsTest {
         }
     }
 
+    /** A configuration entity shape with the framework's validation annotations. */
+    @SuppressWarnings("unused")
+    static final class Constrained {
+        @NotEmpty
+        @Size(min = 1, max = 5)
+        private String title;
+        @Size(max = 2)
+        private List<String> lines;
+        @Pattern(regex = "[a-z]+")
+        private String word;
+        private String free;
+    }
+
+    @Nested
+    @DisplayName("the field's validation constraints")
+    class Constraints {
+
+        @Test
+        @DisplayName("@NotEmpty, @Size (string length, list size) and @Pattern are checked the way the framework's validateFields checks them")
+        void satisfiesTheFrameworkConstraints() {
+            assertThat(ConfigTextDefaults.satisfiesConstraints(Constrained.class, "title", "abcde")).isTrue();
+            assertThat(ConfigTextDefaults.satisfiesConstraints(Constrained.class, "title", "abcdef")).isFalse();
+            assertThat(ConfigTextDefaults.satisfiesConstraints(Constrained.class, "title", " ")).isFalse();
+            assertThat(ConfigTextDefaults.satisfiesConstraints(Constrained.class, "lines", Arrays.asList("a", "b"))).isTrue();
+            assertThat(ConfigTextDefaults.satisfiesConstraints(Constrained.class, "lines", Arrays.asList("a", "b", "c"))).isFalse();
+            assertThat(ConfigTextDefaults.satisfiesConstraints(Constrained.class, "word", "abc")).isTrue();
+            assertThat(ConfigTextDefaults.satisfiesConstraints(Constrained.class, "word", "Abc")).isFalse();
+            assertThat(ConfigTextDefaults.satisfiesConstraints(Constrained.class, "free", "anything at all, any length")).isTrue();
+            assertThatThrownBy(() -> ConfigTextDefaults.satisfiesConstraints(Constrained.class, "missing", "x"))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        @DisplayName("a current text that would break the field's constraints is not written; the value is kept")
+        void aTextBreakingTheConstraintsIsNotWritten() {
+            Set<String> tracked = new java.util.LinkedHashSet<>(Arrays.asList("old", "ok"));
+            assertThat(ConfigTextDefaults.materialize(Constrained.class, "title", "old", "ok", tracked)).isEqualTo("ok");
+            assertThat(ConfigTextDefaults.materialize(Constrained.class, "title", "old", "too long", tracked)).isEqualTo("old");
+
+            Set<List<String>> lists = new java.util.LinkedHashSet<>();
+            lists.add(Arrays.asList("x"));
+            List<String> value = new ArrayList<>(Arrays.asList("x"));
+            assertThat(ConfigTextDefaults.materializeLines(Constrained.class, "lines", value, Arrays.asList("y", "z"), lists))
+                    .containsExactly("y", "z");
+            assertThat(ConfigTextDefaults.materializeLines(Constrained.class, "lines", value, Arrays.asList("y", "z", "w"), lists))
+                    .isSameAs(value);
+        }
+    }
+
     @Nested
     @DisplayName("the jar's own texts")
     class JarTexts {
@@ -160,7 +214,7 @@ class ConfigTextDefaultsTest {
         Path temp;
 
         @Test
-        @DisplayName("YAML is flattened with '.', only string values are kept; JSON is read flat, string values only")
+        @DisplayName("YAML is flattened with '.', only string values are kept; JSON is read flat, every primitive as its text, like the framework's Gson map")
         void yamlAndJsonAreFlattenedLikeTheFramework() throws Exception {
             File jar = jar("m.jar",
                     "lang/en.yml", "top: \"T\"\ngroup:\n  inner: \"I\"\n  deeper:\n    leaf: \"L\"\nnumber: 5\nlist:\n  - a\n",
@@ -171,7 +225,8 @@ class ConfigTextDefaultsTest {
             assertThat(jar2.keySet()).containsExactly("en", "zh");
             assertThat(jar2.get("en")).containsOnlyKeys("top", "group.inner", "group.deeper.leaf")
                     .containsEntry("group.deeper.leaf", "L");
-            assertThat(jar2.get("zh")).containsOnlyKeys("flat.key").containsEntry("flat.key", "F");
+            assertThat(jar2.get("zh")).containsOnlyKeys("flat.key", "n", "b").containsEntry("flat.key", "F")
+                    .containsEntry("n", "3").containsEntry("b", "true");
         }
 
         @Test

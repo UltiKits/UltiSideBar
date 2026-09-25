@@ -102,6 +102,9 @@ class SideBarConfigTextTest {
 
     private final PluginLogger logger = mock(PluginLogger.class);
 
+    /** Catalogue texts an operator changed in the language file on disk, answered before the real catalogue. */
+    private final Map<String, String> diskOverrides = new LinkedHashMap<>();
+
     private final UltiToolsPlugin plugin = pluginDouble();
 
     // ---- the texts, from the real catalogues ----
@@ -180,6 +183,53 @@ class SideBarConfigTextTest {
                 }
             }
         }
+    }
+
+    @Test
+    @DisplayName("an upgraded file holding the shipped title and the first shipped lines reads exactly the English text under en, and the Chinese text under zh")
+    void upgradedFileFollowsTheLanguage() throws Exception {
+        language[0] = "en";
+        write(SHIPPED_TITLE, SHIPPED_LINES_1);
+        SideBarConfig config = spy(load());
+
+        start(config);
+
+        assertThat(onDisk().getString("title")).isEqualTo(EN_TITLE);
+        assertThat(onDisk().getStringList("lines")).containsExactlyElementsOf(EN_LINES);
+        assertThat(config.getTitle()).isEqualTo(EN_TITLE);
+        verify(config, times(1)).save();
+
+        language[0] = "zh";
+        write(SHIPPED_TITLE, SHIPPED_LINES_1);
+        SideBarConfig zh = load();
+        start(zh);
+
+        assertThat(onDisk().getString("title")).isEqualTo(SHIPPED_TITLE);
+        assertThat(onDisk().getStringList("lines")).containsExactlyElementsOf(SHIPPED_LINES_3);
+    }
+
+    @Test
+    @DisplayName("a language-file text that would break the setting's limits (title over 32 characters, more than 15 lines) is not written; the file keeps its value (gate 1 WR-01)")
+    void aTextBreakingTheLimitsIsNotWritten() throws Exception {
+        language[0] = "en";
+        diskOverrides.put("sidebar_default_title", "&6&lA server name far longer than thirty-two characters");
+        StringBuilder sixteen = new StringBuilder("line 1");
+        for (int i = 2; i <= 16; i++) {
+            sixteen.append("\n").append("line ").append(i);
+        }
+        diskOverrides.put("sidebar_default_lines", sixteen.toString());
+        write(SHIPPED_TITLE, SHIPPED_LINES_3);
+        SideBarConfig config = spy(load());
+        byte[] before = bytes();
+
+        start(config);
+
+        assertThat(bytes()).isEqualTo(before);
+        assertThat(config.getTitle()).isEqualTo(SHIPPED_TITLE);
+        assertThat(config.getLines()).containsExactlyElementsOf(SHIPPED_LINES_3);
+        verify(config, never()).save();
+        // The file still loads: the framework's own validation accepts what is on disk.
+        load();
     }
 
     @Test
@@ -448,7 +498,8 @@ class SideBarConfigTextTest {
                 return new File(tempDir.toFile(), invocation.<String>getArgument(0));
             }
             if ("i18n".equals(name)) {
-                return answers.get(language[0]).answer(invocation);
+                String key = invocation.getArgument(invocation.getArguments().length - 1);
+                return diskOverrides.containsKey(key) ? diskOverrides.get(key) : answers.get(language[0]).answer(invocation);
             }
             if ("getLogger".equals(name)) {
                 return logger;
