@@ -18,3 +18,12 @@ sidebar_help_toggle: "§e/sidebar toggle§f - Toggle sidebar"
 sidebar_help_on: "§e/sidebar on§f - Enable sidebar"
 sidebar_help_off: "§e/sidebar off§f - Disable sidebar"
 sidebar_help_reload: "§e/sidebar reload§f - Reload configuration"
+
+# Sidebar title and lines written into config/sidebar.yml in this language while they are still
+# built-in text; the lines are one entry, separated by \n
+sidebar_default_title: "&6&lMy Server"
+sidebar_default_lines: "&7Welcome, &f%player_name%\n\n&eOnline: &f%server_online%/%server_max_players%\n&eWorld: &f%player_world%\n\n&eBalance: &f%vault_eco_balance_formatted%\n&ePing: &f%player_ping%ms\n\n&7Server time\n&f%server_time_HH:mm:ss%\n\n&6play.example.com"
+
+# Console messages
+sidebar_log_defaults_save_failed: "Failed to save sidebar.yml after replacing old shipped defaults: {ERROR}"
+sidebar_log_papi_missing: "PlaceholderAPI not found! Variables will not work."
