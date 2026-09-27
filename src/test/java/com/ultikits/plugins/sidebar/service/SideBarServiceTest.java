@@ -1115,6 +1115,32 @@ class SideBarServiceTest {
             verify(spyService).shutdown();
             verify(spyService).init();
         }
+
+        @Test
+        @DisplayName("Exactly one config change listener stays registered after start-up and three reloads (#21)")
+        void keepsExactlyOneChangeListenerAcrossReloads() {
+            List<com.ultikits.ultitools.interfaces.ConfigChangeListener> registered = new ArrayList<>();
+            lenient().doAnswer(inv -> registered.add(inv.getArgument(0)))
+                .when(config).addChangeListener(any());
+            lenient().doAnswer(inv -> registered.remove(inv.getArgument(0)))
+                .when(config).removeChangeListener(any());
+
+            try (MockedStatic<Bukkit> bukkitMock = mockStatic(Bukkit.class)) {
+                PluginManager pluginManager = mock(PluginManager.class);
+                when(pluginManager.getPlugin("PlaceholderAPI")).thenReturn(null);
+                bukkitMock.when(Bukkit::getPluginManager).thenReturn(pluginManager);
+                bukkitMock.when(Bukkit::getOnlinePlayers).thenReturn(Collections.emptyList());
+                org.bukkit.scheduler.BukkitScheduler scheduler = mock(org.bukkit.scheduler.BukkitScheduler.class);
+                bukkitMock.when(Bukkit::getScheduler).thenReturn(scheduler);
+
+                service.init();
+                service.reload();
+                service.reload();
+                service.reload();
+            }
+
+            assertThat(registered).hasSize(1);
+        }
     }
 
     // ==================== removeSidebar ====================
