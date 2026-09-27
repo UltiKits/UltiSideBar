@@ -890,6 +890,35 @@ class SideBarServiceTest {
         }
 
         @Test
+        @DisplayName("Two lines that differ only after character 40 both show as two distinct entries of at most 40 characters (#17)")
+        void keepsTwoLinesSharingAFortyCharacterPrefix() throws Exception {
+            String sharedPrefix = "0123456789012345678901234567890123456789012345";
+            assertThat(sharedPrefix.length()).isGreaterThan(40);
+            when(config.getLines()).thenReturn(Arrays.asList(sharedPrefix + "A", sharedPrefix + "B"));
+
+            Scoreboard scoreboard = mock(Scoreboard.class);
+            Objective objective = mock(Objective.class);
+            Score score = mock(Score.class);
+            when(scoreboard.getObjective("sidebar")).thenReturn(objective);
+            when(scoreboard.getEntries()).thenReturn(Collections.emptySet());
+            when(objective.getScore(anyString())).thenReturn(score);
+
+            Map<UUID, Scoreboard> scoreboards = new HashMap<>();
+            scoreboards.put(playerUuid, scoreboard);
+            UltiSideBarTestHelper.setField(service, "playerScoreboards", scoreboards);
+
+            service.updateSidebar(player);
+
+            ArgumentCaptor<String> entryCaptor = ArgumentCaptor.forClass(String.class);
+            verify(objective, times(2)).getScore(entryCaptor.capture());
+            List<String> entries = entryCaptor.getAllValues();
+            // One scoreboard line per entry string: two equal strings would be one line.
+            assertThat(new HashSet<>(entries)).hasSize(2);
+            assertThat(entries).allSatisfy(entry -> assertThat(entry.length()).isLessThanOrEqualTo(40));
+            assertThat(entries.get(0)).isEqualTo(sharedPrefix.substring(0, 40));
+        }
+
+        @Test
         @DisplayName("Should reset stale entries and rebuild the scoreboard when content actually changed")
         void rebuildsWhenContentChanged() throws Exception {
             Scoreboard scoreboard = mock(Scoreboard.class);
