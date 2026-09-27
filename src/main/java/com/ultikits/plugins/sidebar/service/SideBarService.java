@@ -35,6 +35,9 @@ public class SideBarService {
     @Autowired
     private SideBarConfig config;
     
+    /** Longest entry text a scoreboard line keeps (the limit older clients enforce). */
+    private static final int MAX_ENTRY_LENGTH = 40;
+
     // Track player scoreboard state
     private final Map<UUID, Scoreboard> playerScoreboards = new ConcurrentHashMap<>();
     
@@ -348,19 +351,7 @@ public class SideBarService {
             String parsed = parsePlaceholders(player, line);
             parsed = ChatColor.translateAlternateColorCodes('&', parsed);
             
-            // Ensure unique entry (add invisible chars if duplicate)
-            String uniqueParsed = parsed;
-            while (usedEntries.contains(uniqueParsed)) {
-                uniqueParsed = uniqueParsed + ChatColor.RESET;
-            }
-            usedEntries.add(uniqueParsed);
-            
-            // Truncate if too long (max 40 chars in older versions)
-            if (uniqueParsed.length() > 40) {
-                uniqueParsed = uniqueParsed.substring(0, 40);
-            }
-            
-            newContent.add(uniqueParsed);
+            newContent.add(uniqueEntry(parsed, usedEntries));
         }
         
         // Check if content changed (performance optimization)
@@ -388,6 +379,39 @@ public class SideBarService {
         }
     }
     
+    /**
+     * Truncates a rendered line to the entry length limit first and only then makes it unique
+     * against the entries already used, so two lines that differ only after the limit still become
+     * two entries (UltiKits/UltiSideBar#17). A duplicate gets invisible reset codes appended, and
+     * enough of its text is cut to keep the whole entry within the limit.
+     */
+    static String uniqueEntry(String rendered, Set<String> usedEntries) {
+        String base = truncate(rendered, MAX_ENTRY_LENGTH);
+        String candidate = base;
+        String marker = "";
+        while (usedEntries.contains(candidate)) {
+            marker = marker + ChatColor.RESET;
+            candidate = truncate(base, MAX_ENTRY_LENGTH - marker.length()) + marker;
+        }
+        usedEntries.add(candidate);
+        return candidate;
+    }
+
+    /**
+     * Cuts text to at most {@code max} characters, dropping a trailing colour-code character that
+     * the cut would leave without its code.
+     */
+    private static String truncate(String text, int max) {
+        if (text.length() <= max) {
+            return text;
+        }
+        String cut = text.substring(0, Math.max(0, max));
+        if (cut.endsWith(String.valueOf(ChatColor.COLOR_CHAR))) {
+            cut = cut.substring(0, cut.length() - 1);
+        }
+        return cut;
+    }
+
     /**
      * Parse PlaceholderAPI placeholders.
      */

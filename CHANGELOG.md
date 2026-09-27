@@ -27,6 +27,9 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- Two sidebar lines that differ only after their 40th character now both show; previously the second
+  one replaced the first (UltiKits/UltiSideBar#17).
+- 只在第 40 个字符之后才不同的两行侧边栏内容现在都会显示；此前第二行会顶替第一行（UltiKits/UltiSideBar#17）。
 - Reloading this module (`/ul reload UltiSideBar` or `/sidebar reload`) now also refreshes its
   language catalogue, which the module's own reload override skipped; configuration is still
   reloaded exactly once, now by the framework instead of by the module. Unloading it with
