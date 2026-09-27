@@ -308,6 +308,13 @@ class SideBarServiceTest {
             Player enabledPlayer = UltiSideBarTestHelper.createMockPlayer("Enabled", UUID.randomUUID());
             Player disabledPlayer = UltiSideBarTestHelper.createMockPlayer("Disabled", UUID.randomUUID());
 
+            // The enabled player is viewing this module's own board, so the loop refreshes it in place.
+            Scoreboard ownBoard = mock(Scoreboard.class);
+            Map<UUID, Scoreboard> scoreboards = new HashMap<>();
+            scoreboards.put(enabledPlayer.getUniqueId(), ownBoard);
+            UltiSideBarTestHelper.setField(service, "playerScoreboards", scoreboards);
+            enabledPlayer.setScoreboard(ownBoard);
+
             SideBarService spyService = spy(service);
             doReturn(true).when(spyService).isSidebarEnabled(enabledPlayer);
             doReturn(false).when(spyService).isSidebarEnabled(disabledPlayer);
@@ -1206,6 +1213,229 @@ class SideBarServiceTest {
         }
     }
 
+    // ==================== sidebar slot yield (#26) ====================
+
+    @Nested
+    @DisplayName("Yielding the sidebar slot to another scoreboard (#26)")
+    class SidebarSlotYield {
+
+        private Scoreboard mainBoard;
+        private Scoreboard newBoard;
+        private Scoreboard foreignBoard;
+        private MockedStatic<Bukkit> bukkitMock;
+
+        @BeforeEach
+        void boards() {
+            mainBoard = FakeScoreboards.board();
+            newBoard = FakeScoreboards.board();
+            foreignBoard = FakeScoreboards.board();
+            Objective objective = mock(Objective.class);
+            lenient().when(newBoard.registerNewObjective(anyString(), anyString(), anyString())).thenReturn(objective);
+            lenient().when(newBoard.getObjective("sidebar")).thenReturn(objective);
+            lenient().when(newBoard.getEntries()).thenReturn(Collections.emptySet());
+            lenient().when(objective.getScore(anyString())).thenReturn(mock(Score.class));
+
+            ScoreboardManager scoreboardManager = mock(ScoreboardManager.class);
+            lenient().when(scoreboardManager.getMainScoreboard()).thenReturn(mainBoard);
+            lenient().when(scoreboardManager.getNewScoreboard()).thenReturn(newBoard);
+            bukkitMock = mockStatic(Bukkit.class);
+            bukkitMock.when(Bukkit::getScoreboardManager).thenReturn(scoreboardManager);
+            bukkitMock.when(Bukkit::getOnlinePlayers).thenReturn(Collections.singletonList(player));
+            lenient().when(query.list()).thenReturn(Arrays.asList(new SideBarPreference(playerUuid.toString(), true)));
+        }
+
+        @AfterEach
+        void closeStatic() {
+            bukkitMock.close();
+        }
+
+        private Map<?, ?> heldBoards() throws Exception {
+            java.lang.reflect.Field boards = SideBarService.class.getDeclaredField("playerScoreboards");
+            boards.setAccessible(true);
+            return (Map<?, ?>) boards.get(service);
+        }
+
+        private void runUpdateLoop() throws Exception {
+            java.lang.reflect.Method updateAllSidebars = SideBarService.class.getDeclaredMethod("updateAllSidebars");
+            updateAllSidebars.setAccessible(true);
+            updateAllSidebars.invoke(service);
+        }
+
+        @Test
+        @DisplayName("Enabling while another scoreboard holds the slot leaves that scoreboard on screen, records the preference and reports the slot as taken")
+        void enableYieldsToAForeignBoard() throws Exception {
+            player.setScoreboard(foreignBoard);
+            when(query.list()).thenReturn(Collections.emptyList());
+
+            service.enableSidebar(player);
+
+            assertThat(player.getScoreboard()).isSameAs(foreignBoard);
+            assertThat(heldBoards().containsKey(playerUuid)).isFalse();
+            ArgumentCaptor<SideBarPreference> saved = ArgumentCaptor.forClass(SideBarPreference.class);
+            verify(dataOperator).insert(saved.capture());
+            assertThat(saved.getValue().getEnabled()).isTrue();
+            assertThat(service.isSlotTakenByAnother(player)).isTrue();
+        }
+
+        @Test
+        @DisplayName("Enabling while the player is on the main scoreboard shows this sidebar")
+        void enableTakesAFreeSlot() {
+            player.setScoreboard(mainBoard);
+
+            service.enableSidebar(player);
+
+            assertThat(player.getScoreboard()).isSameAs(newBoard);
+            assertThat(service.isSlotTakenByAnother(player)).isFalse();
+        }
+
+        @Test
+        @DisplayName("Enabling again while this sidebar is showing keeps the same board")
+        void enableAgainKeepsItsOwnBoard() {
+            player.setScoreboard(mainBoard);
+            service.enableSidebar(player);
+            Scoreboard shown = player.getScoreboard();
+
+            Scoreboard secondNew = FakeScoreboards.board();
+            ScoreboardManager manager = Bukkit.getScoreboardManager();
+            lenient().when(manager.getNewScoreboard()).thenReturn(secondNew);
+            service.enableSidebar(player);
+
+            assertThat(player.getScoreboard()).isSameAs(shown);
+        }
+
+        @Test
+        @DisplayName("Removing the sidebar while another scoreboard is showing leaves that scoreboard on screen")
+        void removeLeavesAForeignBoardAlone() throws Exception {
+            player.setScoreboard(mainBoard);
+            service.enableSidebar(player);
+            player.setScoreboard(foreignBoard);
+
+            service.disableSidebar(player);
+
+            assertThat(player.getScoreboard()).isSameAs(foreignBoard);
+            assertThat(heldBoards().containsKey(playerUuid)).isFalse();
+        }
+
+        @Test
+        @DisplayName("Removing the sidebar while it is showing returns the player to the main scoreboard")
+        void removeReturnsItsOwnBoardToMain() {
+            player.setScoreboard(mainBoard);
+            service.enableSidebar(player);
+
+            service.disableSidebar(player);
+
+            assertThat(player.getScoreboard()).isSameAs(mainBoard);
+        }
+
+        @Test
+        @DisplayName("Shutdown leaves a player who is viewing another scoreboard on it")
+        void shutdownLeavesAForeignBoardAlone() {
+            player.setScoreboard(mainBoard);
+            service.enableSidebar(player);
+            player.setScoreboard(foreignBoard);
+
+            service.shutdown();
+
+            assertThat(player.getScoreboard()).isSameAs(foreignBoard);
+        }
+
+        @Test
+        @DisplayName("The update loop does not take the slot back while another scoreboard holds it, and shows this sidebar again once the slot is free")
+        void updateWaitsForTheSlotAndThenComesBack() throws Exception {
+            player.setScoreboard(foreignBoard);
+            service.enableSidebar(player);
+
+            runUpdateLoop();
+            assertThat(player.getScoreboard()).isSameAs(foreignBoard);
+
+            // The other plugin returns the player to the main scoreboard.
+            player.setScoreboard(mainBoard);
+            runUpdateLoop();
+            assertThat(player.getScoreboard()).isSameAs(newBoard);
+        }
+
+        @Test
+        @DisplayName("The slot is not reported as taken while the player is on the main scoreboard")
+        void mainBoardIsAFreeSlot() {
+            player.setScoreboard(mainBoard);
+
+            assertThat(service.isSlotTakenByAnother(player)).isFalse();
+        }
+    }
+
+    // ==================== start-up notice (#26) ====================
+
+    @Nested
+    @DisplayName("Start-up notice when UltiEssentials' sidebar is also enabled (#26)")
+    class OtherSidebarNotice {
+
+        @org.junit.jupiter.api.io.TempDir
+        java.nio.file.Path moduleFolder;
+
+        private com.ultikits.ultitools.abstracts.UltiToolsPlugin essentials(String enabledLine) throws Exception {
+            java.nio.file.Path config = moduleFolder.resolve("config");
+            java.nio.file.Files.createDirectories(config);
+            java.nio.file.Files.write(config.resolve("essentials.yml"),
+                ("features:\n  scoreboard:\n" + enabledLine).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            com.ultikits.ultitools.abstracts.UltiToolsPlugin module = mock(com.ultikits.ultitools.abstracts.UltiToolsPlugin.class);
+            lenient().when(module.getPluginName()).thenReturn("UltiEssentials");
+            lenient().when(module.getResourceFolderPath()).thenReturn(moduleFolder.toString());
+            return module;
+        }
+
+        private void runNotice(List<com.ultikits.ultitools.abstracts.UltiToolsPlugin> modules) {
+            try (MockedStatic<Bukkit> bukkitMock = mockStatic(Bukkit.class);
+                 MockedStatic<com.ultikits.ultitools.abstracts.UltiToolsPlugin> framework =
+                     mockStatic(com.ultikits.ultitools.abstracts.UltiToolsPlugin.class)) {
+                org.bukkit.scheduler.BukkitScheduler scheduler = mock(org.bukkit.scheduler.BukkitScheduler.class);
+                bukkitMock.when(Bukkit::getScheduler).thenReturn(scheduler);
+                com.ultikits.ultitools.manager.PluginManager pluginManager = mock(com.ultikits.ultitools.manager.PluginManager.class);
+                framework.when(com.ultikits.ultitools.abstracts.UltiToolsPlugin::getPluginManager).thenReturn(pluginManager);
+                lenient().when(pluginManager.getPluginList()).thenReturn(modules);
+
+                service.scheduleOtherSidebarNotice();
+
+                ArgumentCaptor<Runnable> task = ArgumentCaptor.forClass(Runnable.class);
+                verify(scheduler).runTask(any(), task.capture());
+                task.getValue().run();
+            }
+        }
+
+        @Test
+        @DisplayName("Logs one line after start-up when UltiEssentials is loaded with its sidebar enabled")
+        void logsWhenBothSidebarsAreEnabled() throws Exception {
+            runNotice(Collections.singletonList(essentials("    enabled: true\n")));
+
+            verify(UltiSideBarTestHelper.getMockLogger(), times(1)).info("sidebar_log_other_sidebar");
+        }
+
+        @Test
+        @DisplayName("Logs nothing when UltiEssentials' sidebar is disabled")
+        void silentWhenTheOtherSidebarIsDisabled() throws Exception {
+            runNotice(Collections.singletonList(essentials("    enabled: false\n")));
+
+            verify(UltiSideBarTestHelper.getMockLogger(), never()).info("sidebar_log_other_sidebar");
+        }
+
+        @Test
+        @DisplayName("Logs nothing when UltiEssentials is not loaded")
+        void silentWithoutTheOtherModule() {
+            runNotice(Collections.<com.ultikits.ultitools.abstracts.UltiToolsPlugin>emptyList());
+
+            verify(UltiSideBarTestHelper.getMockLogger(), never()).info("sidebar_log_other_sidebar");
+        }
+
+        @Test
+        @DisplayName("Logs nothing when this module's own sidebar is disabled")
+        void silentWhenThisSidebarIsDisabled() throws Exception {
+            when(config.isEnabled()).thenReturn(false);
+
+            runNotice(Collections.singletonList(essentials("    enabled: true\n")));
+
+            verify(UltiSideBarTestHelper.getMockLogger(), never()).info("sidebar_log_other_sidebar");
+        }
+    }
+
     // ==================== clearCache ====================
 
     @Nested
@@ -1285,7 +1515,14 @@ class SideBarServiceTest {
 
         @Test
         @DisplayName("Should reset to main scoreboard")
-        void resetsScoreboard() {
+        void resetsScoreboard() throws Exception {
+            Scoreboard ownBoard = mock(Scoreboard.class);
+            Map<UUID, Scoreboard> scoreboards = new HashMap<>();
+            scoreboards.put(playerUuid, ownBoard);
+            UltiSideBarTestHelper.setField(service, "playerScoreboards", scoreboards);
+            player.setScoreboard(ownBoard);
+            clearInvocations(player);
+
             try (MockedStatic<Bukkit> bukkitMock = mockStatic(Bukkit.class)) {
                 ScoreboardManager scoreboardManager = mock(ScoreboardManager.class);
                 Scoreboard mainScoreboard = mock(Scoreboard.class);
@@ -1452,8 +1689,14 @@ class SideBarServiceTest {
 
         @Test
         @DisplayName("Should remove sidebar in blacklisted world")
-        void removesInBlacklistedWorld() {
+        void removesInBlacklistedWorld() throws Exception {
             when(config.getWorldBlacklist()).thenReturn(Collections.singletonList("world"));
+            Scoreboard ownBoard = mock(Scoreboard.class);
+            Map<UUID, Scoreboard> scoreboards = new HashMap<>();
+            scoreboards.put(playerUuid, ownBoard);
+            UltiSideBarTestHelper.setField(service, "playerScoreboards", scoreboards);
+            player.setScoreboard(ownBoard);
+            clearInvocations(player);
 
             try (MockedStatic<Bukkit> bukkitMock = mockStatic(Bukkit.class)) {
                 ScoreboardManager scoreboardManager = mock(ScoreboardManager.class);
