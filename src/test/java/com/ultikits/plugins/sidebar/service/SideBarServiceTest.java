@@ -126,7 +126,7 @@ class SideBarServiceTest {
         }
 
         @Test
-        @DisplayName("Should not enable an online player's sidebar when default-enabled is false, regardless of the database")
+        @DisplayName("Should not enable an online player's sidebar when default-enabled is false and the player has no stored preference")
         void doesNotEnableOnlinePlayerWhenDefaultDisabled() {
             when(config.isDefaultEnabled()).thenReturn(false);
 
@@ -139,14 +139,58 @@ class SideBarServiceTest {
                 org.bukkit.scheduler.BukkitScheduler scheduler = mock(org.bukkit.scheduler.BukkitScheduler.class);
                 bukkitMock.when(Bukkit::getScheduler).thenReturn(scheduler);
 
-                service.init();
-
-                // Short-circuits on isDefaultEnabled() before ever consulting the database.
+                // No stored preference: default-enabled (false) decides.
                 @SuppressWarnings("unchecked")
                 DataOperator<SideBarPreference> pluginDataOp =
                     UltiSideBarTestHelper.getMockPlugin().getDataOperator(SideBarPreference.class);
-                verify(pluginDataOp, never()).query();
+                @SuppressWarnings("unchecked")
+                Query<SideBarPreference> pluginQuery = mock(Query.class);
+                lenient().when(pluginDataOp.query()).thenReturn(pluginQuery);
+                lenient().when(pluginQuery.where(anyString())).thenReturn(pluginQuery);
+                lenient().when(pluginQuery.eq(any())).thenReturn(pluginQuery);
+                lenient().when(pluginQuery.list()).thenReturn(Collections.emptyList());
+
+                service.init();
+
                 verify(player, never()).setScoreboard(any());
+            }
+        }
+
+        @Test
+        @DisplayName("Reload keeps an online player's sidebar when default-enabled is false but the player's own stored preference is enabled (#20)")
+        void keepsStoredEnabledPreferenceWhenDefaultDisabled() {
+            when(config.isDefaultEnabled()).thenReturn(false);
+
+            try (MockedStatic<Bukkit> bukkitMock = mockStatic(Bukkit.class)) {
+                PluginManager pluginManager = mock(PluginManager.class);
+                when(pluginManager.getPlugin("PlaceholderAPI")).thenReturn(null);
+                bukkitMock.when(Bukkit::getPluginManager).thenReturn(pluginManager);
+                bukkitMock.when(Bukkit::getOnlinePlayers).thenReturn(Collections.singletonList(player));
+
+                org.bukkit.scheduler.BukkitScheduler scheduler = mock(org.bukkit.scheduler.BukkitScheduler.class);
+                bukkitMock.when(Bukkit::getScheduler).thenReturn(scheduler);
+
+                ScoreboardManager scoreboardManager = mock(ScoreboardManager.class);
+                Scoreboard scoreboard = mock(Scoreboard.class);
+                Objective objective = mock(Objective.class);
+                bukkitMock.when(Bukkit::getScoreboardManager).thenReturn(scoreboardManager);
+                lenient().when(scoreboardManager.getNewScoreboard()).thenReturn(scoreboard);
+                lenient().when(scoreboard.registerNewObjective(anyString(), anyString(), anyString())).thenReturn(objective);
+                lenient().when(scoreboard.getEntries()).thenReturn(Collections.emptySet());
+
+                @SuppressWarnings("unchecked")
+                DataOperator<SideBarPreference> pluginDataOp =
+                    UltiSideBarTestHelper.getMockPlugin().getDataOperator(SideBarPreference.class);
+                @SuppressWarnings("unchecked")
+                Query<SideBarPreference> pluginQuery = mock(Query.class);
+                when(pluginDataOp.query()).thenReturn(pluginQuery);
+                when(pluginQuery.where(anyString())).thenReturn(pluginQuery);
+                when(pluginQuery.eq(any())).thenReturn(pluginQuery);
+                when(pluginQuery.list()).thenReturn(Arrays.asList(new SideBarPreference(playerUuid.toString(), true)));
+
+                service.init();
+
+                verify(player).setScoreboard(scoreboard);
             }
         }
 
