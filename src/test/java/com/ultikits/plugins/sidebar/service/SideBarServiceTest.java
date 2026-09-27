@@ -1072,6 +1072,140 @@ class SideBarServiceTest {
         }
     }
 
+    // ==================== main-board teams (#27) ====================
+
+    @Nested
+    @DisplayName("Main scoreboard teams on the private sidebar board (#27)")
+    class MirrorMainBoardTeams {
+
+        private Scoreboard mainBoard;
+        private Scoreboard privateBoard;
+        private MockedStatic<Bukkit> bukkitMock;
+
+        @BeforeEach
+        void boards() {
+            mainBoard = FakeScoreboards.board();
+            privateBoard = FakeScoreboards.board();
+            Objective objective = mock(Objective.class);
+            lenient().when(privateBoard.registerNewObjective(anyString(), anyString(), anyString())).thenReturn(objective);
+            lenient().when(privateBoard.getObjective("sidebar")).thenReturn(objective);
+            lenient().when(privateBoard.getEntries()).thenReturn(Collections.emptySet());
+            lenient().when(objective.getScore(anyString())).thenReturn(mock(Score.class));
+
+            ScoreboardManager scoreboardManager = mock(ScoreboardManager.class);
+            lenient().when(scoreboardManager.getMainScoreboard()).thenReturn(mainBoard);
+            lenient().when(scoreboardManager.getNewScoreboard()).thenReturn(privateBoard);
+            bukkitMock = mockStatic(Bukkit.class);
+            bukkitMock.when(Bukkit::getScoreboardManager).thenReturn(scoreboardManager);
+            bukkitMock.when(Bukkit::getOnlinePlayers).thenReturn(Collections.singletonList(player));
+            when(query.list()).thenReturn(Arrays.asList(new SideBarPreference(playerUuid.toString(), true)));
+        }
+
+        @AfterEach
+        void closeStatic() {
+            bukkitMock.close();
+        }
+
+        private void runUpdateLoop() throws Exception {
+            java.lang.reflect.Method updateAllSidebars = SideBarService.class.getDeclaredMethod("updateAllSidebars");
+            updateAllSidebars.setAccessible(true);
+            updateAllSidebars.invoke(service);
+        }
+
+        @Test
+        @DisplayName("Enabling the sidebar puts the main board's team, prefix and members on the private board")
+        void enableCopiesMainBoardTeams() {
+            FakeScoreboards.addTeam(mainBoard, "up_x", "[VIP] ", "Alice");
+
+            service.enableSidebar(player);
+
+            verify(player).setScoreboard(privateBoard);
+            Team copy = privateBoard.getTeam("up_x");
+            assertThat(copy).isNotNull();
+            assertThat(copy.prefix()).isEqualTo(net.kyori.adventure.text.Component.text("[VIP] "));
+            assertThat(copy.getEntries()).containsExactly("Alice");
+        }
+
+        @Test
+        @DisplayName("One update copies a team added to the main board after the sidebar was shown")
+        void updateCopiesATeamAddedLater() throws Exception {
+            service.enableSidebar(player);
+            assertThat(privateBoard.getTeams()).isEmpty();
+
+            FakeScoreboards.addTeam(mainBoard, "up_x", "[VIP] ", "Alice");
+            runUpdateLoop();
+
+            Team copy = privateBoard.getTeam("up_x");
+            assertThat(copy).isNotNull();
+            assertThat(copy.prefix()).isEqualTo(net.kyori.adventure.text.Component.text("[VIP] "));
+            assertThat(copy.getEntries()).containsExactly("Alice");
+        }
+
+        @Test
+        @DisplayName("One update follows a changed prefix, suffix, colour, option and membership")
+        void updateFollowsChanges() throws Exception {
+            Team source = FakeScoreboards.addTeam(mainBoard, "up_x", "[VIP] ", "Alice", "Bob");
+            service.enableSidebar(player);
+
+            source.prefix(net.kyori.adventure.text.Component.text("[MVP] "));
+            source.suffix(net.kyori.adventure.text.Component.text(" *"));
+            source.setColor(org.bukkit.ChatColor.GOLD);
+            source.setOption(Team.Option.NAME_TAG_VISIBILITY, Team.OptionStatus.NEVER);
+            source.setAllowFriendlyFire(false);
+            source.setCanSeeFriendlyInvisibles(false);
+            source.displayName(net.kyori.adventure.text.Component.text("VIPs"));
+            source.removeEntry("Bob");
+            source.addEntry("Carol");
+            runUpdateLoop();
+
+            Team copy = privateBoard.getTeam("up_x");
+            assertThat(copy.prefix()).isEqualTo(net.kyori.adventure.text.Component.text("[MVP] "));
+            assertThat(copy.suffix()).isEqualTo(net.kyori.adventure.text.Component.text(" *"));
+            assertThat(copy.getColor()).isEqualTo(org.bukkit.ChatColor.GOLD);
+            assertThat(copy.getOption(Team.Option.NAME_TAG_VISIBILITY)).isEqualTo(Team.OptionStatus.NEVER);
+            assertThat(copy.allowFriendlyFire()).isFalse();
+            assertThat(copy.canSeeFriendlyInvisibles()).isFalse();
+            assertThat(copy.displayName()).isEqualTo(net.kyori.adventure.text.Component.text("VIPs"));
+            assertThat(copy.getEntries()).containsExactlyInAnyOrder("Alice", "Carol");
+        }
+
+        @Test
+        @DisplayName("A team removed from the main board is removed from the private board on the next update")
+        void updateRemovesATeamGoneFromTheMainBoard() throws Exception {
+            Team source = FakeScoreboards.addTeam(mainBoard, "up_x", "[VIP] ", "Alice");
+            service.enableSidebar(player);
+            assertThat(privateBoard.getTeam("up_x")).isNotNull();
+
+            source.unregister();
+            runUpdateLoop();
+
+            assertThat(privateBoard.getTeam("up_x")).isNull();
+        }
+
+        @Test
+        @DisplayName("An unchanged team costs no writes on the next update")
+        void unchangedTeamCostsNoWrites() throws Exception {
+            FakeScoreboards.addTeam(mainBoard, "up_x", "[VIP] ", "Alice");
+            service.enableSidebar(player);
+            Team copy = privateBoard.getTeam("up_x");
+            clearInvocations(copy, privateBoard);
+
+            runUpdateLoop();
+
+            verify(copy, never()).prefix(any());
+            verify(copy, never()).suffix(any());
+            verify(copy, never()).displayName(any());
+            verify(copy, never()).setColor(any());
+            verify(copy, never()).setOption(any(), any());
+            verify(copy, never()).setAllowFriendlyFire(anyBoolean());
+            verify(copy, never()).setCanSeeFriendlyInvisibles(anyBoolean());
+            verify(copy, never()).addEntry(anyString());
+            verify(copy, never()).removeEntry(anyString());
+            verify(privateBoard, never()).registerNewTeam(anyString());
+            assertThat(copy.getEntries()).containsExactly("Alice");
+        }
+    }
+
     // ==================== clearCache ====================
 
     @Nested
