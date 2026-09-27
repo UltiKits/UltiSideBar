@@ -8,6 +8,7 @@ sidebar_reloaded: "§aUltiSideBar 配置已重载！"
 # 命令消息
 sidebar_toggle_on: "§a侧边栏已开启！"
 sidebar_toggle_off: "§e侧边栏已关闭！"
+sidebar_toggle_on_occupied: "§e侧边栏已开启，但当前正显示另一个计分板；它关闭后会显示本侧边栏。"
 
 # 命令描述
 sidebar_command_description: "切换侧边栏显示"
@@ -26,3 +27,4 @@ sidebar_default_lines: "&7欢迎, &f%player_name%\n\n&e在线人数: &f%server_o
 # 控制台消息
 sidebar_log_defaults_save_failed: "替换旧版默认值后保存 sidebar.yml 失败：{ERROR}"
 sidebar_log_papi_missing: "未找到 PlaceholderAPI！变量将无法使用。"
+sidebar_log_other_sidebar: "UltiEssentials 的侧边栏（features.scoreboard）也已开启：每位玩家保留先显示的那个侧边栏，另一个在它关闭后显示。"

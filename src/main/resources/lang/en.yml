@@ -8,6 +8,7 @@ sidebar_reloaded: "§aUltiSideBar configuration has been reloaded!"
 # Command messages
 sidebar_toggle_on: "§aSidebar has been enabled!"
 sidebar_toggle_off: "§eSidebar has been disabled!"
+sidebar_toggle_on_occupied: "§eYour sidebar is on, but another scoreboard is showing right now; this sidebar appears when that one is turned off."
 
 # Command description
 sidebar_command_description: "Toggle sidebar display"
@@ -27,3 +28,4 @@ sidebar_default_lines: "&7Welcome, &f%player_name%\n\n&eOnline: &f%server_online
 # Console messages
 sidebar_log_defaults_save_failed: "Failed to save sidebar.yml after replacing old shipped defaults: {ERROR}"
 sidebar_log_papi_missing: "PlaceholderAPI not found! Variables will not work."
+sidebar_log_other_sidebar: "UltiEssentials' sidebar (features.scoreboard) is also enabled: each player keeps whichever sidebar is shown first, and the other one appears when that one is turned off."

@@ -29,6 +29,15 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - Two sidebar lines that differ only after their 40th character now both show; previously the second
   one replaced the first (UltiKits/UltiSideBar#17).
+- The sidebar no longer replaces another plugin's sidebar (such as UltiEssentials' scoreboard): whichever
+  sidebar a player sees first stays, and this one appears once the other is turned off. `/sidebar on`
+  and `/sidebar toggle` now say when another scoreboard keeps the slot (the choice is still saved), and
+  `/sidebar off` no longer removes another plugin's sidebar. When UltiEssentials' sidebar is also
+  enabled, one console line says so after start-up (UltiKits/UltiSideBar#26).
+- 侧边栏不再顶替其它插件的侧边栏（例如 UltiEssentials 的计分板）：玩家先看到哪个侧边栏就保留哪个，另一个关闭后
+  本侧边栏才显示。`/sidebar on` 与 `/sidebar toggle` 在另一个计分板占用该位置时会如实说明（选择仍会保存），
+  `/sidebar off` 也不再移除其它插件的侧边栏。UltiEssentials 的侧边栏同时开启时，启动后控制台会有一行提示
+  （UltiKits/UltiSideBar#26）。
 - Name prefixes and other main-scoreboard teams (UltiEssentials name prefixes, vanilla `/team` teams,
   other plugins' teams) now show while the sidebar is on. The sidebar's own scoreboard now carries the
   server's main-scoreboard teams and follows their changes on every refresh; previously every player

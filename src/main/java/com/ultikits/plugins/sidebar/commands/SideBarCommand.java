@@ -38,7 +38,7 @@ public class SideBarCommand extends BaseCommandExecutor {
     public void toggle(@CmdSender Player player) {
         boolean enabled = sideBarService.toggleSidebar(player);
         if (enabled) {
-            player.sendMessage(plugin.i18n("sidebar_toggle_on"));
+            sendOnReply(player);
         } else {
             player.sendMessage(plugin.i18n("sidebar_toggle_off"));
         }
@@ -48,7 +48,19 @@ public class SideBarCommand extends BaseCommandExecutor {
     @CmdTarget(CmdTarget.CmdTargetType.PLAYER)
     public void on(@CmdSender Player player) {
         sideBarService.enableSidebar(player);
-        player.sendMessage(plugin.i18n("sidebar_toggle_on"));
+        sendOnReply(player);
+    }
+
+    /**
+     * Confirms that the sidebar is on, or says that it is on but another scoreboard keeps the slot
+     * for now (UltiKits/UltiSideBar#26).
+     */
+    private void sendOnReply(Player player) {
+        if (sideBarService.isSlotTakenByAnother(player)) {
+            player.sendMessage(plugin.i18n("sidebar_toggle_on_occupied"));
+        } else {
+            player.sendMessage(plugin.i18n("sidebar_toggle_on"));
+        }
     }
     
     @CmdMapping(format = "off")

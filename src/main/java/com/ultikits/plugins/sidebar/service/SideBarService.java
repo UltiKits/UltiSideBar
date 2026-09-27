@@ -12,11 +12,13 @@ import com.ultikits.ultitools.interfaces.DataOperator;
 import me.clip.placeholderapi.PlaceholderAPI;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.scoreboard.*;
 import org.bukkit.scheduler.BukkitTask;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -36,6 +38,15 @@ public class SideBarService {
     @Autowired
     private SideBarConfig config;
     
+    /** The module whose sidebar shares the player's sidebar slot with this one. */
+    private static final String OTHER_SIDEBAR_MODULE = "UltiEssentials";
+
+    /** That module's configuration file, relative to its module folder. */
+    private static final String OTHER_SIDEBAR_CONFIG = "config/essentials.yml";
+
+    /** That module's switch for its sidebar. */
+    private static final String OTHER_SIDEBAR_KEY = "features.scoreboard.enabled";
+
     /** Longest entry text a scoreboard line keeps (the limit older clients enforce). */
     private static final int MAX_ENTRY_LENGTH = 40;
 
@@ -193,10 +204,18 @@ public class SideBarService {
      */
     private void updateAllSidebars() {
         for (Player player : Bukkit.getOnlinePlayers()) {
-            if (isSidebarEnabled(player)) {
-                mirrorMainTeams(playerScoreboards.get(player.getUniqueId()));
-                updateSidebar(player);
+            if (!isSidebarEnabled(player)) {
+                continue;
             }
+            Scoreboard own = playerScoreboards.get(player.getUniqueId());
+            if (own != null && own.equals(player.getScoreboard())) {
+                mirrorMainTeams(own);
+                updateSidebar(player);
+            } else if (!isSlotTakenByAnother(player)) {
+                // The slot is free again (another scoreboard was put away): show this sidebar.
+                showSidebar(player);
+            }
+            // Otherwise another scoreboard holds the slot: leave it on screen (UltiKits/UltiSideBar#26).
         }
     }
 
@@ -230,17 +249,51 @@ public class SideBarService {
             return;
         }
         
-        // Create scoreboard
-        Scoreboard scoreboard = Bukkit.getScoreboardManager().getNewScoreboard();
-        Objective objective = scoreboard.registerNewObjective("sidebar", "dummy", 
-            ChatColor.translateAlternateColorCodes('&', config.getTitle()));
-        objective.setDisplaySlot(DisplaySlot.SIDEBAR);
+        showSidebar(player);
+    }
+
+    /**
+     * Shows this module's sidebar board to the player, unless another scoreboard holds the slot.
+     * <p>
+     * The slot is free when the player views the server's main scoreboard or this module's own
+     * board. When another plugin's scoreboard is on screen (UltiEssentials' sidebar, for example),
+     * the first one shown keeps it and this method changes nothing; the update loop shows this
+     * sidebar once the slot is free again (maintainer decision 2026-09-27, UltiKits/UltiSideBar#26).
+     */
+    private void showSidebar(Player player) {
+        if (isSlotTakenByAnother(player)) {
+            return;
+        }
+        Scoreboard scoreboard = playerScoreboards.get(player.getUniqueId());
+        if (scoreboard == null) {
+            scoreboard = Bukkit.getScoreboardManager().getNewScoreboard();
+            Objective objective = scoreboard.registerNewObjective("sidebar", "dummy",
+                ChatColor.translateAlternateColorCodes('&', config.getTitle()));
+            objective.setDisplaySlot(DisplaySlot.SIDEBAR);
+            playerScoreboards.put(player.getUniqueId(), scoreboard);
+        }
         mirrorMainTeams(scoreboard);
-        
-        playerScoreboards.put(player.getUniqueId(), scoreboard);
-        player.setScoreboard(scoreboard);
-        
+        if (!scoreboard.equals(player.getScoreboard())) {
+            player.setScoreboard(scoreboard);
+        }
+
         updateSidebar(player);
+    }
+
+    /**
+     * Whether another plugin's scoreboard holds the player's sidebar slot: the player views neither
+     * the server's main scoreboard nor this module's own board.
+     *
+     * @param player the player
+     * @return {@code true} if this module's sidebar yields to the scoreboard on screen
+     */
+    public boolean isSlotTakenByAnother(Player player) {
+        Scoreboard current = player.getScoreboard();
+        if (current == null || current.equals(playerScoreboards.get(player.getUniqueId()))) {
+            return false;
+        }
+        ScoreboardManager manager = Bukkit.getScoreboardManager();
+        return manager == null || !current.equals(manager.getMainScoreboard());
     }
     
     /**
@@ -255,12 +308,14 @@ public class SideBarService {
      * Remove sidebar from player.
      */
     public void removeSidebar(Player player) {
-        playerScoreboards.remove(player.getUniqueId());
+        Scoreboard own = playerScoreboards.remove(player.getUniqueId());
         contentCache.remove(player.getUniqueId());
         
-        // Reset to main scoreboard
-        if (Bukkit.getScoreboardManager() != null) {
-            player.setScoreboard(Bukkit.getScoreboardManager().getMainScoreboard());
+        // Return the player to the main scoreboard only while this module's board is on screen:
+        // another plugin's scoreboard stays where it is (UltiKits/UltiSideBar#26).
+        ScoreboardManager manager = Bukkit.getScoreboardManager();
+        if (manager != null && own != null && own.equals(player.getScoreboard())) {
+            player.setScoreboard(manager.getMainScoreboard());
         }
     }
     
@@ -459,6 +514,43 @@ public class SideBarService {
         return text;
     }
     
+    /**
+     * Schedules the one start-up notice for a server that also runs UltiEssentials' sidebar. It runs
+     * on the first server tick, after every module has been loaded, whatever their load order.
+     */
+    public void scheduleOtherSidebarNotice() {
+        Bukkit.getScheduler().runTask(bukkitPlugin, this::reportOtherSidebar);
+    }
+
+    /**
+     * Logs one line when this module's sidebar and UltiEssentials' sidebar are both enabled: each
+     * player keeps whichever is shown first, and the other one waits (UltiKits/UltiSideBar#26).
+     */
+    private void reportOtherSidebar() {
+        if (!config.isEnabled()) {
+            return;
+        }
+        for (UltiToolsPlugin module : UltiToolsPlugin.getPluginManager().getPluginList()) {
+            if (OTHER_SIDEBAR_MODULE.equals(module.getPluginName())
+                    && isOtherSidebarEnabled(module.getResourceFolderPath())) {
+                plugin.getLogger().info(plugin.i18n("sidebar_log_other_sidebar"));
+                return;
+            }
+        }
+    }
+
+    /**
+     * Reads UltiEssentials' own switch for its sidebar from that module's configuration file; the
+     * switch defaults to on, as it ships.
+     */
+    private static boolean isOtherSidebarEnabled(String moduleFolder) {
+        File file = new File(moduleFolder, OTHER_SIDEBAR_CONFIG);
+        if (!file.isFile()) {
+            return true;
+        }
+        return YamlConfiguration.loadConfiguration(file).getBoolean(OTHER_SIDEBAR_KEY, true);
+    }
+
     /**
      * Handle player join.
      */

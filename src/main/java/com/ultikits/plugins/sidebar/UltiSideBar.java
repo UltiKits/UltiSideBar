@@ -26,6 +26,7 @@ public class UltiSideBar extends UltiToolsPlugin {
         SideBarService sideBarService = getContext().getBean(SideBarService.class);
         if (sideBarService != null) {
             sideBarService.init();
+            sideBarService.scheduleOtherSidebarNotice();
         }
 
         getLogger().info(i18n("sidebar_enabled"));
