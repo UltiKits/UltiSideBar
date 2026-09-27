@@ -6,6 +6,7 @@ import com.ultikits.plugins.sidebar.data.SideBarPreference;
 import com.ultikits.ultitools.abstracts.UltiToolsPlugin;
 import com.ultikits.ultitools.annotations.Autowired;
 import com.ultikits.ultitools.annotations.Service;
+import com.ultikits.ultitools.interfaces.ConfigChangeListener;
 import com.ultikits.ultitools.interfaces.DataOperator;
 
 import me.clip.placeholderapi.PlaceholderAPI;
@@ -53,6 +54,9 @@ public class SideBarService {
     // Bukkit plugin instance for scheduler calls
     private Plugin bukkitPlugin;
 
+    // The config change listener init() registered, removed again by shutdown()
+    private ConfigChangeListener changeListener;
+
     // PlaceholderAPI availability
     private boolean placeholderApiAvailable = false;
 
@@ -95,11 +99,17 @@ public class SideBarService {
             plugin.getLogger().warn(plugin.i18n("sidebar_log_papi_missing"));
         }
         
-        // Register config change listener
-        config.addChangeListener(cfg -> {
+        // Register the config change listener. reload() runs shutdown() and then init(), and
+        // shutdown() removes the listener this method added, so exactly one stays registered however
+        // often the module reloads (UltiKits/UltiSideBar#21).
+        if (changeListener != null) {
+            config.removeChangeListener(changeListener);
+        }
+        changeListener = cfg -> {
             clearCache();
             refreshAllSidebars();
-        });
+        };
+        config.addChangeListener(changeListener);
         
         startUpdateTask();
         
@@ -120,6 +130,11 @@ public class SideBarService {
         if (updateTask != null) {
             updateTask.cancel();
             updateTask = null;
+        }
+
+        if (changeListener != null) {
+            config.removeChangeListener(changeListener);
+            changeListener = null;
         }
         
         // Remove all scoreboards
