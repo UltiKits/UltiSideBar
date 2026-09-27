@@ -194,8 +194,23 @@ public class SideBarService {
     private void updateAllSidebars() {
         for (Player player : Bukkit.getOnlinePlayers()) {
             if (isSidebarEnabled(player)) {
+                mirrorMainTeams(playerScoreboards.get(player.getUniqueId()));
                 updateSidebar(player);
             }
+        }
+    }
+
+    /**
+     * Copies the main scoreboard's teams onto a private sidebar board, so name prefixes and every
+     * other main-board team stay visible to the player viewing it (UltiKits/UltiSideBar#27).
+     */
+    private void mirrorMainTeams(Scoreboard board) {
+        if (board == null) {
+            return;
+        }
+        ScoreboardManager manager = Bukkit.getScoreboardManager();
+        if (manager != null) {
+            MainTeamMirror.mirror(manager.getMainScoreboard(), board);
         }
     }
     
@@ -220,6 +235,7 @@ public class SideBarService {
         Objective objective = scoreboard.registerNewObjective("sidebar", "dummy", 
             ChatColor.translateAlternateColorCodes('&', config.getTitle()));
         objective.setDisplaySlot(DisplaySlot.SIDEBAR);
+        mirrorMainTeams(scoreboard);
         
         playerScoreboards.put(player.getUniqueId(), scoreboard);
         player.setScoreboard(scoreboard);
