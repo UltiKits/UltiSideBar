@@ -43,7 +43,7 @@ class SideBarConfigTest {
         }
 
         @Test
-        @DisplayName("Should have default title")
+        @DisplayName("Should ship the last shipped title as the Java default (rewritten to the server's language at enable)")
         void title() {
             SideBarConfig config = createRealConfig();
             assertThat(config.getTitle()).isEqualTo("&6&l我的服务器");
@@ -175,10 +175,10 @@ class SideBarConfigTest {
          * so a future commit cannot introduce a broken token and "fix" this test in the same
          * edit by adding the same name to a local allow-list.
          * <p>
-         * {@code vault_eco_balance_formatted} is deliberately excluded (WR-03): it additionally
-         * requires Vault plus a registered economy provider, a materially larger install surface
-         * than "PlaceholderAPI is installed", so it is exempted below by name rather than
-         * silently substituted here.
+         * {@code vault_eco_balance_formatted} is deliberately excluded: it additionally requires
+         * Vault plus a registered economy provider, a materially larger install surface than
+         * "PlaceholderAPI is installed", so it is exempted below by name rather than silently
+         * substituted here.
          */
         private static final String VAULT_DEPENDENT_TOKEN = "%vault_eco_balance_formatted%";
 
@@ -276,9 +276,9 @@ class SideBarConfigTest {
         @Test
         @DisplayName("An operator-configured line survives init() against a persisted file that also holds the legacy default")
         void anOperatorConfiguredLineIsUnaffected(@TempDir Path tempDir) throws Exception {
-            // Drives the real init()-mediated persisted-file-vs-default precedence (CR-01) --
-            // a bare setLines()/getLines() round-trip cannot fail for any change to
-            // SideBarConfig's default-handling behavior and proves nothing about upgrade safety.
+            // Drives the real init()-mediated persisted-file-vs-default precedence -- a bare
+            // setLines()/getLines() round-trip cannot fail for any change to SideBarConfig's
+            // default-handling behavior and proves nothing about upgrade safety.
             File configFile = new File(tempDir.toFile(), "config/sidebar.yml");
             Files.createDirectories(configFile.getParentFile().toPath());
             YamlConfiguration persisted = new YamlConfiguration();
@@ -321,7 +321,7 @@ class SideBarConfigTest {
     }
 
     // ============================
-    // Legacy %world_name% default line migration (issue #13, CR-01)
+    // Legacy %world_name% default line migration (issue #13)
     // ============================
 
     @Nested
@@ -405,7 +405,7 @@ class SideBarConfigTest {
         }
 
         @Test
-        @DisplayName("Also rewrites a persisted line byte-identical to the old 12-hour server-time default (PR #15 round-3 review)")
+        @DisplayName("Also rewrites a persisted line byte-identical to the old 12-hour server-time default (found reviewing PR #15)")
         void rewritesLegacyServerTimeLine() throws Exception {
             File configFile = persistLines(Collections.singletonList("&f%server_time_hh:mm:ss%"));
 

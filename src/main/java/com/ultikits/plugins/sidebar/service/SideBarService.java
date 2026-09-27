@@ -1,5 +1,6 @@
 package com.ultikits.plugins.sidebar.service;
 
+import com.ultikits.plugins.sidebar.config.ConfigTextDefaults;
 import com.ultikits.plugins.sidebar.config.SideBarConfig;
 import com.ultikits.plugins.sidebar.data.SideBarPreference;
 import com.ultikits.ultitools.abstracts.UltiToolsPlugin;
@@ -60,28 +61,35 @@ public class SideBarService {
         dataOperator = plugin.getDataOperator(SideBarPreference.class);
         bukkitPlugin = Bukkit.getPluginManager().getPlugin("UltiTools");
 
-        // One-time migration (issue #13, CR-01; extended by PR #15 round-3 review to also cover
-        // the legacy 12-hour server-time line): AbstractConfigEntity.init() -- which has already
-        // run by this point, via UltiToolsPlugin's constructor -- only fills keys that are
-        // MISSING from the persisted file and never overwrites an existing "lines" value, so a
-        // server that has ever started an older version of this plugin keeps every stale shipped
-        // default (the invalid %world_name% line, the ambiguous %server_time_hh:mm:ss% line)
-        // forever without this explicit, exact-match rewrite. Runs again on every reload() (this
-        // method is also called from reload()), which is harmless: once migrated, the exact-match
-        // check finds nothing left to rewrite.
-        if (config.migrateLegacyDefaultLines()) {
+        // One-time migration (issue #13; extended by PR #15 to also cover the legacy 12-hour
+        // server-time line): AbstractConfigEntity.init() -- which has already run by this point,
+        // via UltiToolsPlugin's constructor -- only fills keys that are MISSING from the
+        // persisted file and never overwrites an existing "lines" value, so a server that has
+        // ever started an older version of this plugin keeps every stale shipped default (the
+        // invalid %world_name% line, the ambiguous %server_time_hh:mm:ss% line) forever without
+        // this explicit, exact-match rewrite. Runs again on every reload() (this method is also
+        // called from reload()), which is harmless: once migrated, the exact-match check finds nothing
+        // left to rewrite.
+        // The same pass writes the title and lines in the server's language while they are still
+        // built-in text (maintainer decision 2026-09-25): this method runs from registerSelf() and from
+        // onReload() via reload(), both after the framework's language setting is loaded -- never from
+        // the change listener below, which the framework fires before it reloads the language. The text
+        // comes from this jar's own catalogue, not from plugin.i18n (which reads the operator's extracted
+        // language file first), so every value written is one the next pass recognises.
+        if (config.materializeText(ConfigTextDefaults.jarLanguage(SideBarConfig.class,
+                plugin.getLanguageCode())::getLocalizedText)) {
             try {
                 config.save();
             } catch (IOException e) {
-                plugin.getLogger().warn("Failed to persist the sidebar.yml legacy default line "
-                        + "migration: " + e.getMessage());
+                plugin.getLogger().warn(plugin.i18n("sidebar_log_defaults_save_failed")
+                        .replace("{ERROR}", String.valueOf(e.getMessage())));
             }
         }
 
         // Check PlaceholderAPI
         placeholderApiAvailable = Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null;
         if (!placeholderApiAvailable) {
-            plugin.getLogger().warn("PlaceholderAPI not found! Variables will not work.");
+            plugin.getLogger().warn(plugin.i18n("sidebar_log_papi_missing"));
         }
         
         // Register config change listener

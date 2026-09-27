@@ -91,9 +91,15 @@ class SideBarServiceTest {
                 org.bukkit.scheduler.BukkitScheduler scheduler = mock(org.bukkit.scheduler.BukkitScheduler.class);
                 bukkitMock.when(Bukkit::getScheduler).thenReturn(scheduler);
 
+                // The console line follows the server's language: answered from the real zh catalogue.
+                when(UltiSideBarTestHelper.getMockPlugin().i18n(anyString()))
+                        .thenAnswer(com.ultikits.plugins.sidebar.i18n.CatalogueText.answer("zh"));
+
                 service.init();
 
-                verify(UltiSideBarTestHelper.getMockLogger()).warn("PlaceholderAPI not found! Variables will not work.");
+                // Computed before verify(): a lookup that throws inside verify() leaves Mockito mid-verification.
+                String expected = com.ultikits.plugins.sidebar.i18n.CatalogueText.text("zh", "sidebar_log_papi_missing");
+                verify(UltiSideBarTestHelper.getMockLogger()).warn(expected);
             }
         }
 
