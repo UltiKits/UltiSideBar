@@ -55,6 +55,10 @@ public class SideBarService {
     
     // Content cache for performance optimization (avoid unnecessary scoreboard updates)
     private final Map<UUID, List<String>> contentCache = new ConcurrentHashMap<>();
+
+    // The main-scoreboard teams copied onto each player's sidebar board, so only those are ever changed
+    // or removed (UltiKits/UltiSideBar#27)
+    private final Map<UUID, Map<String, Team>> copiedTeams = new ConcurrentHashMap<>();
     
     // Data operator for persistent storage
     private DataOperator<SideBarPreference> dataOperator;
@@ -155,6 +159,7 @@ public class SideBarService {
         
         playerScoreboards.clear();
         contentCache.clear();
+        copiedTeams.clear();
     }
     
     /**
@@ -209,7 +214,7 @@ public class SideBarService {
             }
             Scoreboard own = playerScoreboards.get(player.getUniqueId());
             if (own != null && own.equals(player.getScoreboard())) {
-                mirrorMainTeams(own);
+                mirrorMainTeams(player, own);
                 updateSidebar(player);
             } else {
                 // Shows this sidebar once the slot is free again (another scoreboard was put away);
@@ -224,13 +229,14 @@ public class SideBarService {
      * Copies the main scoreboard's teams onto a private sidebar board, so name prefixes and every
      * other main-board team stay visible to the player viewing it (UltiKits/UltiSideBar#27).
      */
-    private void mirrorMainTeams(Scoreboard board) {
+    private void mirrorMainTeams(Player player, Scoreboard board) {
         if (board == null) {
             return;
         }
         ScoreboardManager manager = Bukkit.getScoreboardManager();
         if (manager != null) {
-            MainTeamMirror.mirror(manager.getMainScoreboard(), board);
+            MainTeamMirror.mirror(manager.getMainScoreboard(), board,
+                    copiedTeams.computeIfAbsent(player.getUniqueId(), uuid -> new HashMap<>()));
         }
     }
     
@@ -272,8 +278,9 @@ public class SideBarService {
                 ChatColor.translateAlternateColorCodes('&', config.getTitle()));
             objective.setDisplaySlot(DisplaySlot.SIDEBAR);
             playerScoreboards.put(player.getUniqueId(), scoreboard);
+            copiedTeams.remove(player.getUniqueId());
         }
-        mirrorMainTeams(scoreboard);
+        mirrorMainTeams(player, scoreboard);
         if (!scoreboard.equals(player.getScoreboard())) {
             player.setScoreboard(scoreboard);
         }
@@ -311,6 +318,7 @@ public class SideBarService {
     public void removeSidebar(Player player) {
         Scoreboard own = playerScoreboards.remove(player.getUniqueId());
         contentCache.remove(player.getUniqueId());
+        copiedTeams.remove(player.getUniqueId());
         
         // Return the player to the main scoreboard only while this module's board is on screen:
         // another plugin's scoreboard stays where it is (UltiKits/UltiSideBar#26).
@@ -584,6 +592,7 @@ public class SideBarService {
     public void onPlayerQuit(Player player) {
         playerScoreboards.remove(player.getUniqueId());
         contentCache.remove(player.getUniqueId());
+        copiedTeams.remove(player.getUniqueId());
     }
     
     /**
