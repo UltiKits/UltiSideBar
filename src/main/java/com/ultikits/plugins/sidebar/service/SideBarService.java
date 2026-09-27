@@ -431,10 +431,16 @@ public class SideBarService {
      */
     public void onPlayerJoin(Player player) {
         if (isSidebarEnabledInDatabase(player.getUniqueId())) {
-            // Delay to allow other plugins to load
+            // Delay to allow other plugins to load. A player who quits within the delay has already
+            // been cleaned up by onPlayerQuit; enabling them anyway would leave a board and a cache
+            // entry that nothing removes again (UltiKits/UltiSideBar#19).
             Bukkit.getScheduler().runTaskLater(
                 bukkitPlugin,
-                () -> enableSidebar(player),
+                () -> {
+                    if (player.isOnline()) {
+                        enableSidebar(player);
+                    }
+                },
                 10L
             );
         }
