@@ -25,6 +25,13 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Service for managing player sidebars.
+ * <p>
+ * The private scoreboard this service assigns to a player belongs to this service alone (maintainer
+ * decision 2026-09-27, UltiKits/UltiEssentials#65): another plugin writing onto it - an objective of its
+ * own named {@code sidebar}, or a player placed in its own team on that board - is outside the contract
+ * and may be overwritten; the service changes only what it created there. A sidebar shown on the server's
+ * main scoreboard counts as a free slot and is replaced, as in every earlier version (maintainer decision
+ * 2026-09-27, UltiKits/UltiSideBar#29).
  *
  * @author wisdomme
  * @version 1.0.0
