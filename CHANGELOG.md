@@ -30,6 +30,12 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Two sidebar lines that differ only after their 40th character now both show; previously the second
   one replaced the first (UltiKits/UltiSideBar#17).
 - 只在第 40 个字符之后才不同的两行侧边栏内容现在都会显示；此前第二行会顶替第一行（UltiKits/UltiSideBar#17）。
+- With `default-enabled: false`, reloading (`/sidebar reload`, `/ul reload UltiSideBar`) now keeps the
+  sidebar of an online player who turned it on themselves; previously the reload removed it and did not
+  bring it back. `default-enabled` now applies only to a player with no stored choice
+  (UltiKits/UltiSideBar#20).
+- 在 `default-enabled: false` 时，重载（`/sidebar reload`、`/ul reload UltiSideBar`）现在会保留自己开启了侧边栏的在线
+  玩家的侧边栏；此前重载会移除它且不再恢复。`default-enabled` 现在只作用于没有保存过选择的玩家（UltiKits/UltiSideBar#20）。
 - Reloading this module (`/ul reload UltiSideBar` or `/sidebar reload`) now also refreshes its
   language catalogue, which the module's own reload override skipped; configuration is still
   reloaded exactly once, now by the framework instead of by the module. Unloading it with

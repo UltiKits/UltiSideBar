@@ -103,9 +103,11 @@ public class SideBarService {
         
         startUpdateTask();
         
-        // Initialize for online players
+        // Initialize for online players. The stored preference decides; default-enabled applies only
+        // to a player with no stored preference, which isSidebarEnabledInDatabase already encodes
+        // (UltiKits/UltiSideBar#20).
         for (Player player : Bukkit.getOnlinePlayers()) {
-            if (config.isDefaultEnabled() && isSidebarEnabledInDatabase(player.getUniqueId())) {
+            if (isSidebarEnabledInDatabase(player.getUniqueId())) {
                 enableSidebar(player);
             }
         }
