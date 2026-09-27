@@ -553,10 +553,21 @@ class SideBarServiceTest {
     @DisplayName("disableSidebar")
     class DisableSidebar {
 
+        /** Puts the player on this module's own board, the one case in which disabling resets them. */
+        private void showingOwnBoard() throws Exception {
+            Scoreboard ownBoard = mock(Scoreboard.class);
+            Map<UUID, Scoreboard> scoreboards = new HashMap<>();
+            scoreboards.put(playerUuid, ownBoard);
+            UltiSideBarTestHelper.setField(service, "playerScoreboards", scoreboards);
+            player.setScoreboard(ownBoard);
+            clearInvocations(player);
+        }
+
         @Test
         @DisplayName("Should update database and remove scoreboard")
-        void disables() {
+        void disables() throws Exception {
             when(query.list()).thenReturn(Collections.emptyList());
+            showingOwnBoard();
 
             try (MockedStatic<Bukkit> bukkitMock = mockStatic(Bukkit.class)) {
                 ScoreboardManager scoreboardManager = mock(ScoreboardManager.class);
@@ -576,7 +587,8 @@ class SideBarServiceTest {
 
         @Test
         @DisplayName("Should update canonical duplicate preference row by id")
-        void updatesCanonicalDuplicatePreferenceRow() {
+        void updatesCanonicalDuplicatePreferenceRow() throws Exception {
+            showingOwnBoard();
             SideBarPreference laterPreference = preference("pref-b", true);
             SideBarPreference canonicalPreference = preference("pref-a", true);
             when(query.list()).thenReturn(Arrays.asList(laterPreference, canonicalPreference));
