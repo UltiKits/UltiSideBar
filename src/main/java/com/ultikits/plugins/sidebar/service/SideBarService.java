@@ -432,9 +432,15 @@ public class SideBarService {
             return;
         }
         
-        // Parse and build new content
+        // Parse and build new content. Every entry of a team on this board counts as taken: a line
+        // equal to one (a %player_name% line for a player in a prefixed team) would otherwise be that
+        // team member's own entry, and the copied team's prefix, suffix and colour would format the
+        // sidebar row. Such a line gets a distinct entry that shows the same text (UltiKits/UltiSideBar#27).
         List<String> newContent = new ArrayList<>();
         Set<String> usedEntries = new HashSet<>();
+        for (Team team : scoreboard.getTeams()) {
+            usedEntries.addAll(team.getEntries());
+        }
         
         for (String line : lines) {
             String parsed = parsePlaceholders(player, line);

@@ -41,10 +41,11 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Name prefixes and other main-scoreboard teams (UltiEssentials name prefixes, vanilla `/team` teams,
   other plugins' teams) now show while the sidebar is on. The sidebar's own scoreboard now carries the
   server's main-scoreboard teams and follows their changes on every refresh; previously every player
-  with the sidebar on saw no team prefix on anybody (UltiKits/UltiSideBar#27).
+  with the sidebar on saw no team prefix on anybody. A sidebar line that reads exactly like a team
+  member's name keeps its own look rather than taking that team's prefix (UltiKits/UltiSideBar#27).
 - 侧边栏开启时，名字前缀和主计分板上的其它队伍（UltiEssentials 的名字前缀、原版 `/team` 队伍、其它插件的队伍）
   现在都会显示：侧边栏自己的计分板会带上服务器主计分板的队伍，并在每次刷新时跟随其变化；此前开着侧边栏的
-  玩家看不到任何人的队伍前缀（UltiKits/UltiSideBar#27）。
+  玩家看不到任何人的队伍前缀。与某个队伍成员名字完全相同的侧边栏行保持原样，不会带上该队伍的前缀（UltiKits/UltiSideBar#27）。
 - 只在第 40 个字符之后才不同的两行侧边栏内容现在都会显示；此前第二行会顶替第一行（UltiKits/UltiSideBar#17）。
 - With `default-enabled: false`, reloading (`/sidebar reload`, `/ul reload UltiSideBar`) now keeps the
   sidebar of an online player who turned it on themselves; previously the reload removed it and did not
