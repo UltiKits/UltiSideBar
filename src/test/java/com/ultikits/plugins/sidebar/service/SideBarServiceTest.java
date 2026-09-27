@@ -1202,6 +1202,22 @@ class SideBarServiceTest {
         }
 
         @Test
+        @DisplayName("A sidebar line equal to a team member's name gets its own entry, so the team's prefix does not format the row")
+        void aLineEqualToATeamEntryIsNotFormattedByTheTeam() {
+            FakeScoreboards.addTeam(mainBoard, "up_x", "[VIP] ", "Steve");
+            when(config.getLines()).thenReturn(Arrays.asList("Steve", "Line 2"));
+            Objective objective = privateBoard.getObjective("sidebar");
+
+            service.enableSidebar(player);
+
+            ArgumentCaptor<String> entries = ArgumentCaptor.forClass(String.class);
+            verify(objective, atLeastOnce()).getScore(entries.capture());
+            assertThat(entries.getAllValues()).as("the row is not the team member's own entry").doesNotContain("Steve");
+            assertThat(entries.getAllValues()).anySatisfy(e -> assertThat(org.bukkit.ChatColor.stripColor(e)).isEqualTo("Steve"));
+            assertThat(privateBoard.getTeam("up_x").getEntries()).containsExactly("Steve");
+        }
+
+        @Test
         @DisplayName("An unchanged team costs no writes on the next update")
         void unchangedTeamCostsNoWrites() throws Exception {
             FakeScoreboards.addTeam(mainBoard, "up_x", "[VIP] ", "Alice");
