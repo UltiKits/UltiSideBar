@@ -1233,6 +1233,23 @@ class SideBarServiceTest {
         }
 
         @Test
+        @DisplayName("A team another plugin put on the board under a copied team's name is left as that plugin set it")
+        void aForeignTeamReusingACopiedNameIsLeftAlone() throws Exception {
+            Team source = FakeScoreboards.addTeam(mainBoard, "up_x", "[VIP] ", "Alice");
+            service.enableSidebar(player);
+            privateBoard.getTeam("up_x").unregister();
+            Team foreign = FakeScoreboards.addTeam(privateBoard, "up_x", "[TAB] ", "Bob");
+
+            runUpdateLoop();
+            source.unregister();
+            runUpdateLoop();
+
+            assertThat(privateBoard.getTeam("up_x")).isSameAs(foreign);
+            assertThat(foreign.prefix()).isEqualTo(net.kyori.adventure.text.Component.text("[TAB] "));
+            assertThat(foreign.getEntries()).containsExactly("Bob");
+        }
+
+        @Test
         @DisplayName("An unchanged team costs no writes on the next update")
         void unchangedTeamCostsNoWrites() throws Exception {
             FakeScoreboards.addTeam(mainBoard, "up_x", "[VIP] ", "Alice");
