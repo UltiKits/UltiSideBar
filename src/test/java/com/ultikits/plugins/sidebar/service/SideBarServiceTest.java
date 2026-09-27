@@ -1218,6 +1218,21 @@ class SideBarServiceTest {
         }
 
         @Test
+        @DisplayName("A team another plugin put on the sidebar's board stays; only teams copied from the main scoreboard are removed")
+        void aForeignTeamOnTheBoardStays() throws Exception {
+            Team copied = FakeScoreboards.addTeam(mainBoard, "up_x", "[VIP] ", "Alice");
+            FakeScoreboards.addTeam(privateBoard, "tab_sort", "", "Bob");
+            service.enableSidebar(player);
+            assertThat(privateBoard.getTeam("up_x")).isNotNull();
+
+            copied.unregister();
+            runUpdateLoop();
+
+            assertThat(privateBoard.getTeam("up_x")).as("the copy of a team gone from the main board").isNull();
+            assertThat(privateBoard.getTeam("tab_sort")).as("another plugin's team").isNotNull();
+        }
+
+        @Test
         @DisplayName("An unchanged team costs no writes on the next update")
         void unchangedTeamCostsNoWrites() throws Exception {
             FakeScoreboards.addTeam(mainBoard, "up_x", "[VIP] ", "Alice");
