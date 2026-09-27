@@ -77,6 +77,7 @@ public final class UltiSideBarTestHelper {
         lenient().when(player.getName()).thenReturn(name);
         lenient().when(player.getUniqueId()).thenReturn(uuid);
         lenient().when(player.hasPermission(anyString())).thenReturn(true);
+        lenient().when(player.isOnline()).thenReturn(true);
 
         World world = mock(World.class);
         lenient().when(world.getName()).thenReturn("world");

@@ -1174,6 +1174,48 @@ class SideBarServiceTest {
         }
     }
 
+    @Nested
+    @DisplayName("onPlayerJoin: quit before the delayed enable (#19)")
+    class OnPlayerJoinQuitBeforeEnable {
+
+        @Test
+        @DisplayName("A player who quit before the 10-tick enable runs gets no scoreboard and leaves no cached entry")
+        void quitBeforeDelayedEnableLeavesNoEntry() throws Exception {
+            when(query.list()).thenReturn(Arrays.asList(new SideBarPreference(playerUuid.toString(), true)));
+
+            try (MockedStatic<Bukkit> bukkitMock = mockStatic(Bukkit.class)) {
+                org.bukkit.scheduler.BukkitScheduler scheduler = mock(org.bukkit.scheduler.BukkitScheduler.class);
+                bukkitMock.when(Bukkit::getScheduler).thenReturn(scheduler);
+
+                ScoreboardManager scoreboardManager = mock(ScoreboardManager.class);
+                Scoreboard scoreboard = mock(Scoreboard.class);
+                Objective objective = mock(Objective.class);
+                bukkitMock.when(Bukkit::getScoreboardManager).thenReturn(scoreboardManager);
+                lenient().when(scoreboardManager.getNewScoreboard()).thenReturn(scoreboard);
+                lenient().when(scoreboard.registerNewObjective(anyString(), anyString(), anyString())).thenReturn(objective);
+                lenient().when(scoreboard.getEntries()).thenReturn(Collections.emptySet());
+
+                service.onPlayerJoin(player);
+
+                ArgumentCaptor<Runnable> taskCaptor = ArgumentCaptor.forClass(Runnable.class);
+                verify(scheduler).runTaskLater(any(), taskCaptor.capture(), eq(10L));
+
+                // The player quits within the 10 ticks: the quit handler runs, then the task fires.
+                when(player.isOnline()).thenReturn(false);
+                service.onPlayerQuit(player);
+                taskCaptor.getValue().run();
+
+                java.lang.reflect.Field boards = SideBarService.class.getDeclaredField("playerScoreboards");
+                boards.setAccessible(true);
+                java.lang.reflect.Field cache = SideBarService.class.getDeclaredField("contentCache");
+                cache.setAccessible(true);
+                assertThat(((Map<?, ?>) boards.get(service)).containsKey(playerUuid)).isFalse();
+                assertThat(((Map<?, ?>) cache.get(service)).containsKey(playerUuid)).isFalse();
+                verify(player, never()).setScoreboard(any());
+            }
+        }
+    }
+
     // ==================== onPlayerQuit ====================
 
     @Nested
