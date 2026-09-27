@@ -211,11 +211,12 @@ public class SideBarService {
             if (own != null && own.equals(player.getScoreboard())) {
                 mirrorMainTeams(own);
                 updateSidebar(player);
-            } else if (!isSlotTakenByAnother(player)) {
-                // The slot is free again (another scoreboard was put away): show this sidebar.
+            } else {
+                // Shows this sidebar once the slot is free again (another scoreboard was put away);
+                // while another scoreboard holds it, showSidebar leaves that one on screen
+                // (UltiKits/UltiSideBar#26).
                 showSidebar(player);
             }
-            // Otherwise another scoreboard holds the slot: leave it on screen (UltiKits/UltiSideBar#26).
         }
     }
 
