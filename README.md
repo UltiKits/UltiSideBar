@@ -1,8 +1,12 @@
 # UltiSideBar
 
 [![UltiTools](https://img.shields.io/badge/UltiTools-6.0+-blue.svg)](https://github.com/UltiKits/UltiTools-Reborn)
-[![Minecraft](https://img.shields.io/badge/Minecraft-1.8--1.21-green.svg)](https://www.spigotmc.org/)
+[![Paper](https://img.shields.io/badge/Paper-1.19--1.21-green.svg)](https://papermc.io/)
 [![Java](https://img.shields.io/badge/Java-8+-orange.svg)](https://www.java.com/)
+
+Runs on **Paper 1.19 or newer** only, like the UltiTools framework it is built on (the framework declares Bukkit `api-version: 1.19` and uses Paper's Adventure API throughout). Spigot and servers older than 1.19 are not supported.
+
+仅支持 **Paper 1.19 及以上**，与其所依赖的 UltiTools 框架一致（框架声明 Bukkit `api-version: 1.19`，并全面使用 Paper 的 Adventure API）。不支持 Spigot，也不支持 1.19 以前的服务端。
 
 一个功能强大的 Minecraft 服务器侧边栏插件，基于 UltiTools-API 框架开发，支持 PlaceholderAPI 变量和玩家偏好持久化。
 
@@ -155,6 +159,16 @@ default-enabled: true
 
 - 玩家进入黑名单世界时，侧边栏自动隐藏
 - 玩家离开黑名单世界时，侧边栏自动恢复（如果玩家未手动关闭）
+
+### 侧边栏计分板的归属 / Who owns the sidebar's scoreboard
+
+The sidebar is drawn on a private scoreboard this module assigns to each player who has it on. That scoreboard belongs to this module alone: another plugin must not write onto it (register its own objective named `sidebar`, or put a player into its own team on it). Such writes are not supported and may be overwritten. The module copies the main scoreboard's teams onto it, so name prefixes stay visible. If another plugin's private scoreboard is already on screen, this sidebar waits until the player is back on the main scoreboard.
+
+**This module replaces a sidebar set with vanilla commands.** A sidebar shown on the server's main scoreboard (`/scoreboard objectives setdisplay sidebar …`, or a plugin that draws on the main scoreboard) counts as a free slot, and this sidebar takes it for every player who has the sidebar on, as every earlier version did.
+
+侧边栏画在本模块为每位开启侧边栏的玩家换上的私有计分板上。这块计分板只归本模块所有：其他插件不应往上面写东西（注册名为 `sidebar` 的目标，或把玩家放进自己在这块计分板上的队伍），这类写入不受支持，可能被覆盖。本模块会把主计分板的队伍复制过去，让名字前缀保持可见。若玩家屏幕上已经是其他插件的私有计分板，本侧边栏会等到玩家回到主计分板后再显示。
+
+**本模块会盖掉用原版命令设置的侧边栏。** 显示在服务器主计分板上的侧边栏（`/scoreboard objectives setdisplay sidebar …`，或把侧边栏画在主计分板上的插件）视为空闲位置，开启侧边栏的玩家都会看到本模块的侧边栏，与以往所有版本一致。
 
 ## 📋 更新日志
 

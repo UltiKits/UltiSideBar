@@ -72,6 +72,37 @@ class SideBarCommandTest {
         }
     }
 
+    // ==================== sidebar slot taken (#26) ====================
+
+    @Nested
+    @DisplayName("sidebar slot taken by another scoreboard (#26)")
+    class SlotTaken {
+
+        @Test
+        @DisplayName("/sidebar on says the slot is taken when another scoreboard keeps it")
+        void onReportsTheTakenSlot() {
+            when(service.isSlotTakenByAnother(player)).thenReturn(true);
+
+            command.on(player);
+
+            verify(service).enableSidebar(player);
+            verify(player).sendMessage("sidebar_toggle_on_occupied");
+            verify(player, never()).sendMessage("sidebar_toggle_on");
+        }
+
+        @Test
+        @DisplayName("/sidebar toggle says the slot is taken when it turned the sidebar on but another scoreboard keeps it")
+        void toggleReportsTheTakenSlot() {
+            when(service.toggleSidebar(player)).thenReturn(true);
+            when(service.isSlotTakenByAnother(player)).thenReturn(true);
+
+            command.toggle(player);
+
+            verify(player).sendMessage("sidebar_toggle_on_occupied");
+            verify(player, never()).sendMessage("sidebar_toggle_on");
+        }
+    }
+
     // ==================== on ====================
 
     @Nested

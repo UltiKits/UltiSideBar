@@ -77,6 +77,7 @@ public final class UltiSideBarTestHelper {
         lenient().when(player.getName()).thenReturn(name);
         lenient().when(player.getUniqueId()).thenReturn(uuid);
         lenient().when(player.hasPermission(anyString())).thenReturn(true);
+        lenient().when(player.isOnline()).thenReturn(true);
 
         World world = mock(World.class);
         lenient().when(world.getName()).thenReturn("world");
@@ -84,8 +85,15 @@ public final class UltiSideBarTestHelper {
         lenient().when(player.getLocation()).thenReturn(location);
         lenient().when(player.getWorld()).thenReturn(world);
 
-        Scoreboard scoreboard = mock(Scoreboard.class);
-        lenient().when(player.getScoreboard()).thenReturn(scoreboard);
+        // The player's scoreboard is what was last set on them. It starts as null, which the service
+        // treats like the main scoreboard (a free sidebar slot); a test that needs the player on a
+        // board sets it with player.setScoreboard(...).
+        java.util.concurrent.atomic.AtomicReference<Scoreboard> viewing = new java.util.concurrent.atomic.AtomicReference<>();
+        lenient().doAnswer(inv -> {
+            viewing.set(inv.getArgument(0));
+            return null;
+        }).when(player).setScoreboard(any());
+        lenient().when(player.getScoreboard()).thenAnswer(inv -> viewing.get());
 
         return player;
     }

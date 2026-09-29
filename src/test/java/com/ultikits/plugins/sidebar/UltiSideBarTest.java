@@ -33,6 +33,7 @@ class UltiSideBarTest {
 
         assertThat(result).isTrue();
         verify(service).init();
+        verify(service).scheduleOtherSidebarNotice();
         verify(logger).info("sidebar_enabled");
     }
 
