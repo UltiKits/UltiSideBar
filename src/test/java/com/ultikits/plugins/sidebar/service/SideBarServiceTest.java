@@ -390,7 +390,7 @@ class SideBarServiceTest {
                 @SuppressWarnings("unchecked")
                 Map<UUID, List<String>> resultCache = (Map<UUID, List<String>>) cacheField.get(service);
                 // The stale entry went with the cleared cache; the re-created board's own lines took its place.
-                assertThat(resultCache.get(playerUuid)).isNotEqualTo(Arrays.asList("stale"));
+                assertThat(resultCache.get(playerUuid)).containsExactly("Line 1", "Line 2");
                 // refreshAllSidebars() removed then re-created the scoreboard for the online player.
                 verify(player).setScoreboard(scoreboard);
             }

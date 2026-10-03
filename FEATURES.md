@@ -174,7 +174,8 @@ Configuration is reloaded once per reload both before and after the migration.
 ## Configuration
 
 `@ConfigEntity("config/sidebar.yml")` on `SideBarConfig`. All 6 keys below are framework-bound
-`@ConfigEntry` fields.
+`@ConfigEntry` fields; the rows `.legacy-line-migration`, `.materialize` and `.comments` describe behaviours
+of the file, not further keys.
 
 | ID | Feature | Kind | How to reach | Permission | Target | Tier | Manual | Source |
 |---|---|---|---|---|---|---|---|---|
