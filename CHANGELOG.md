@@ -27,6 +27,16 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- The sidebar now recovers when another plugin changes the scoreboard it shows: if another plugin
+  unregisters the sidebar's objective, clears or takes its display slot, or resets its scores, the next
+  refresh registers the objective again, puts it back in the slot and draws every line again. When the
+  lines change, only the lines this module wrote earlier are reset; before, every entry of the board was
+  reset on every objective, which also erased another plugin's below-name, player-list or sidebar scores
+  on the same board (UltiKits/UltiSideBar#30).
+- 其他插件改动侧边栏所用的计分板后，侧边栏现在会恢复：若其他插件注销了侧边栏的目标、清空或占用了其显示位置、
+  或重置了分数，下一次刷新会重新注册目标、放回显示位置并重画所有内容行。内容变化时只重置本模块之前写入的行；
+  此前会对计分板上的每个条目在所有目标上执行重置，同时清掉其他插件在同一计分板上的名字下方、玩家列表或侧边栏分数
+  （UltiKits/UltiSideBar#30）。
 - Two sidebar lines that differ only after their 40th character now both show; previously the second
   one replaced the first (UltiKits/UltiSideBar#17).
 - The sidebar no longer replaces another plugin's sidebar (such as UltiEssentials' scoreboard): whichever
