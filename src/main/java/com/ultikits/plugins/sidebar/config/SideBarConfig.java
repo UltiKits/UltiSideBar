@@ -30,29 +30,29 @@ import lombok.Setter;
 @ConfigEntity("config/sidebar.yml")
 public class SideBarConfig extends AbstractConfigEntity {
 
-    @ConfigEntry(path = "enabled", comment = "启用侧边栏")
+    @ConfigEntry(path = "enabled", comment = "{sidebar_config_comment_enabled}")
     private boolean enabled = true;
 
     // The Java default is the title earlier versions shipped: the framework writes it for a missing
     // key and materializeText() then rewrites it in the server's language.
     @NotEmpty
     @Size(min = 1, max = 32)
-    @ConfigEntry(path = "title", comment = "侧边栏标题（支持颜色代码和变量）")
+    @ConfigEntry(path = "title", comment = "{sidebar_config_comment_title}")
     private String title = SHIPPED_TITLE;
 
     @Range(min = 1, max = 1200)
-    @ConfigEntry(path = "update-interval", comment = "更新间隔（tick，20 tick = 1秒）")
+    @ConfigEntry(path = "update-interval", comment = "{sidebar_config_comment_update_interval}")
     private int updateInterval = 20;
 
     @NotEmpty
     @Size(min = 1, max = 15)
-    @ConfigEntry(path = "lines", comment = "侧边栏内容（支持 PlaceholderAPI 变量）")
+    @ConfigEntry(path = "lines", comment = "{sidebar_config_comment_lines}")
     private List<String> lines = new ArrayList<>(SHIPPED_LINES);
 
-    @ConfigEntry(path = "world-blacklist", comment = "禁用侧边栏的世界")
+    @ConfigEntry(path = "world-blacklist", comment = "{sidebar_config_comment_world_blacklist}")
     private List<String> worldBlacklist = Collections.singletonList("world_event");
 
-    @ConfigEntry(path = "default-enabled", comment = "玩家默认启用侧边栏")
+    @ConfigEntry(path = "default-enabled", comment = "{sidebar_config_comment_default_enabled}")
     private boolean defaultEnabled = true;
 
     public SideBarConfig() {

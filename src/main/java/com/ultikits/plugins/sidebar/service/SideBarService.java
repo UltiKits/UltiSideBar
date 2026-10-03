@@ -57,6 +57,9 @@ public class SideBarService {
     /** Longest entry text a scoreboard line keeps (the limit older clients enforce). */
     private static final int MAX_ENTRY_LENGTH = 40;
 
+    /** The name of the one objective this service registers on each player's board. */
+    private static final String OBJECTIVE_NAME = "sidebar";
+
     // Track player scoreboard state
     private final Map<UUID, Scoreboard> playerScoreboards = new ConcurrentHashMap<>();
     
@@ -281,9 +284,7 @@ public class SideBarService {
         Scoreboard scoreboard = playerScoreboards.get(player.getUniqueId());
         if (scoreboard == null) {
             scoreboard = Bukkit.getScoreboardManager().getNewScoreboard();
-            Objective objective = scoreboard.registerNewObjective("sidebar", "dummy",
-                ChatColor.translateAlternateColorCodes('&', config.getTitle()));
-            objective.setDisplaySlot(DisplaySlot.SIDEBAR);
+            registerSidebarObjective(scoreboard);
             playerScoreboards.put(player.getUniqueId(), scoreboard);
             copiedTeams.remove(player.getUniqueId());
         }
@@ -421,32 +422,57 @@ public class SideBarService {
     
     /**
      * Update sidebar for player.
+     * <p>
+     * The player's board is this service's own, but another plugin can still change it while the player
+     * views it. Every update therefore puts back what the sidebar needs and another plugin may have taken:
+     * the objective (registered again when it is gone), its sidebar slot (restored when it was cleared or
+     * given to another objective) and its scores (every line is written again when one of the lines last
+     * written is missing). A change of the lines resets only the entries this service wrote itself, on its
+     * own objective, never an entry of another objective on the board (UltiKits/UltiSideBar#30).
      */
     public void updateSidebar(Player player) {
         Scoreboard scoreboard = playerScoreboards.get(player.getUniqueId());
         if (scoreboard == null) {
             return;
         }
-        
-        Objective objective = scoreboard.getObjective("sidebar");
-        if (objective == null) {
-            return;
-        }
-        
-        // Update title
+
         String title = parsePlaceholders(player, config.getTitle());
-        try {
-            objective.setDisplayName(ChatColor.translateAlternateColorCodes('&', title));
-        } catch (Exception ignored) {
-            // Ignore title too long errors
+        List<String> previous = contentCache.get(player.getUniqueId());
+        Objective objective = scoreboard.getObjective(OBJECTIVE_NAME);
+        // Set when the board no longer shows the lines last written, so every line is drawn again.
+        boolean redraw = false;
+        // Set when the objective was registered in this update and so holds no score yet.
+        boolean freshObjective = false;
+        if (objective == null) {
+            // Another plugin unregistered the objective. The new one starts empty, so the lines
+            // remembered no longer describe what is shown.
+            objective = registerSidebarObjective(scoreboard);
+            redraw = true;
+            freshObjective = true;
         }
-        
+        setDisplayName(objective, title);
+        if (!freshObjective) {
+            // The rest of what another plugin can change on this board: the sidebar slot (cleared, or
+            // given to another objective) and the scores (reset).
+            if (!objective.equals(scoreboard.getObjective(DisplaySlot.SIDEBAR))) {
+                objective.setDisplaySlot(DisplaySlot.SIDEBAR);
+            }
+            if (previous != null) {
+                for (String entry : previous) {
+                    if (!objective.getScore(entry).isScoreSet()) {
+                        redraw = true;
+                        break;
+                    }
+                }
+            }
+        }
+
         // Get lines
         List<String> lines = config.getLines();
         if (lines == null || lines.isEmpty()) {
             return;
         }
-        
+
         // Parse and build new content. Every entry of a team on this board counts as taken: a line
         // equal to one (a %player_name% line for a player in a prefixed team) would otherwise be that
         // team member's own entry, and the copied team's prefix, suffix and colour would format the
@@ -456,28 +482,28 @@ public class SideBarService {
         for (Team team : scoreboard.getTeams()) {
             usedEntries.addAll(team.getEntries());
         }
-        
+
         for (String line : lines) {
             String parsed = parsePlaceholders(player, line);
             parsed = ChatColor.translateAlternateColorCodes('&', parsed);
-            
+
             newContent.add(uniqueEntry(parsed, usedEntries));
         }
-        
+
         // Check if content changed (performance optimization)
-        List<String> cachedContent = contentCache.get(player.getUniqueId());
-        if (cachedContent != null && cachedContent.equals(newContent)) {
-            return; // No change, skip update
+        if (!redraw && newContent.equals(previous)) {
+            return; // No change, every line still holds its score
         }
-        
+
         // Update cache
         contentCache.put(player.getUniqueId(), new ArrayList<>(newContent));
-        
-        // Clear old entries
-        for (String entry : new HashSet<>(scoreboard.getEntries())) {
-            scoreboard.resetScores(entry);
+
+        // Clear the entries this objective scored that are no longer shown. Only this objective's own
+        // scores go: Scoreboard#resetScores(entry) would clear the entry on every objective of the board.
+        if (!freshObjective) {
+            resetStaleScores(scoreboard, objective, previous, newContent);
         }
-        
+
         // Add new entries (reverse order for correct display)
         int score = newContent.size();
         for (String entry : newContent) {
@@ -488,7 +514,47 @@ public class SideBarService {
             }
         }
     }
-    
+
+    /**
+     * Registers this service's objective on a board and puts it in the sidebar slot.
+     */
+    private Objective registerSidebarObjective(Scoreboard scoreboard) {
+        Objective objective = scoreboard.registerNewObjective(OBJECTIVE_NAME, "dummy",
+                ChatColor.translateAlternateColorCodes('&', config.getTitle()));
+        objective.setDisplaySlot(DisplaySlot.SIDEBAR);
+        return objective;
+    }
+
+    private static void setDisplayName(Objective objective, String title) {
+        try {
+            objective.setDisplayName(ChatColor.translateAlternateColorCodes('&', title));
+        } catch (Exception ignored) {
+            // Ignore title too long errors
+        }
+    }
+
+    /**
+     * Resets, on this service's own objective only, the scores of the entries it wrote earlier and no
+     * longer shows. Without a record of what was written (the cache was cleared), every entry of the
+     * board that this objective holds a score for and that is no longer shown goes.
+     */
+    private void resetStaleScores(Scoreboard scoreboard, Objective objective, List<String> previous,
+                                  List<String> shown) {
+        Set<String> candidates = previous != null
+                ? new LinkedHashSet<>(previous) : new LinkedHashSet<>(scoreboard.getEntries());
+        candidates.removeAll(shown);
+        for (String entry : candidates) {
+            try {
+                Score stale = objective.getScore(entry);
+                if (stale.isScoreSet()) {
+                    stale.resetScore();
+                }
+            } catch (Exception ignored) {
+                // Ignore an entry the board no longer accepts
+            }
+        }
+    }
+
     /**
      * Truncates a rendered line to the entry length limit first and only then makes it unique
      * against the entries already used, so two lines that differ only after the limit still become

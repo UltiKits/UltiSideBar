@@ -27,6 +27,24 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- The comments above the keys of `config/sidebar.yml` now come from the module's language files: a
+  server set to `language: en` writes English comments on a fresh install (earlier versions wrote
+  Chinese-only comments in every language). An existing file's comments on these six keys switch to the
+  server's language at the next start; values are untouched, and a comment you wrote by hand above one of
+  these keys is replaced (UltiKits/UltiSideBar#32).
+- `config/sidebar.yml` 中各配置项上方的注释现在取自模块的语言文件：`language: en` 的服务器全新安装时写入英文注释
+  （此前所有语言下都写入纯中文注释）。已有文件中这六项的注释会在下次启动时切换为服务器语言；配置值不变，
+  你手写在这些配置项上方的注释会被替换（UltiKits/UltiSideBar#32）。
+- The sidebar now recovers when another plugin changes the scoreboard it shows: if another plugin
+  unregisters the sidebar's objective, clears or takes its display slot, or resets its scores, the next
+  refresh registers the objective again, puts it back in the slot and draws every line again. When the
+  lines change, only the lines this module wrote earlier are reset; before, every entry of the board was
+  reset on every objective, which also erased another plugin's below-name, player-list or sidebar scores
+  on the same board (UltiKits/UltiSideBar#30).
+- 其他插件改动侧边栏所用的计分板后，侧边栏现在会恢复：若其他插件注销了侧边栏的目标、清空或占用了其显示位置、
+  或重置了分数，下一次刷新会重新注册目标、放回显示位置并重画所有内容行。内容变化时只重置本模块之前写入的行；
+  此前会对计分板上的每个条目在所有目标上执行重置，同时清掉其他插件在同一计分板上的名字下方、玩家列表或侧边栏分数
+  （UltiKits/UltiSideBar#30）。
 - Two sidebar lines that differ only after their 40th character now both show; previously the second
   one replaced the first (UltiKits/UltiSideBar#17).
 - The sidebar no longer replaces another plugin's sidebar (such as UltiEssentials' scoreboard): whichever

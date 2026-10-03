@@ -72,6 +72,13 @@ world-blacklist:
 default-enabled: true
 ```
 
+`lines` 最多 15 行。写得更多时，UltiTools 会在加载时拒绝加载本模块，并在控制台指出字段 `lines`、实际行数和上限 `[1, 15]`，
+配置文件不会被改写；删减到 15 行以内后重启即可。这是按设计的行为：多出的行既不会被悄悄丢弃，也不会被自动截断。
+
+`lines` takes at most 15 lines. If more are written, UltiTools refuses to load this module at start-up and the console names the
+field `lines`, the number of lines written and the limit `[1, 15]`; the file is not rewritten. Reduce it to 15 lines or fewer and
+restart. This is by design: extra lines are neither dropped silently nor cut automatically.
+
 ### 颜色代码
 
 使用 `&` 符号加颜色代码：
