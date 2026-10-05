@@ -31,11 +31,11 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   server set to `language: en` writes English comments on a fresh install (earlier versions wrote
   Chinese-only comments in every language). The comments the framework wrote on these six keys, the Chinese
   ones earlier versions wrote included, switch to the server's language at the next start, and after you
-  change `language` and run `/ul reload`; values are untouched, and a comment you wrote yourself is kept as
+  change `language` and run a bare `/ul reload`; values are untouched, and a comment you wrote yourself is kept as
   you wrote it (UltiKits/UltiTools-Reborn#611) (UltiKits/UltiSideBar#32).
 - `config/sidebar.yml` 中各配置项上方的注释现在取自模块的语言文件：`language: en` 的服务器全新安装时写入英文注释
   （此前所有语言下都写入纯中文注释）。框架在这六项上写下的注释（包括旧版本写下的中文注释）会在下次启动时、以及你修改
-  `language` 并执行 `/ul reload` 后切换为服务器语言；配置值不变，你自己写的注释保持原样（UltiKits/UltiTools-Reborn#611）
+  `language` 并执行 不带参数的 `/ul reload` 后切换为服务器语言；配置值不变，你自己写的注释保持原样（UltiKits/UltiTools-Reborn#611）
   （UltiKits/UltiSideBar#32）。
 - The sidebar now recovers when another plugin changes the scoreboard it shows: if another plugin
   unregisters the sidebar's objective, clears or takes its display slot, or resets its scores, the next
