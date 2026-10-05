@@ -52,8 +52,13 @@ class SideBarConfigCommentsTest {
 
     private SideBarConfig load(String language) throws IOException {
         Files.createDirectories(file().getParentFile().toPath());
-        UltiToolsPlugin plugin = Mockito.mock(UltiToolsPlugin.class, invocation -> {
+        // The module's own class, so the framework's real shippedCatalogueTexts reads this module's catalogues from
+        // its code source and recognises a comment it wrote in either language as its own (framework #604, PR #611).
+        UltiToolsPlugin plugin = Mockito.mock(com.ultikits.plugins.sidebar.UltiSideBar.class, invocation -> {
             String name = invocation.getMethod().getName();
+            if ("shippedCatalogueTexts".equals(name)) {
+                return invocation.callRealMethod();
+            }
             if ("getConfigFolder".equals(name)) {
                 return tempDir.toString();
             }
