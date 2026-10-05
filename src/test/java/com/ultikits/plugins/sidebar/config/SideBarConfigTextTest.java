@@ -299,6 +299,85 @@ class SideBarConfigTextTest {
         }
     }
 
+    /**
+     * Plan 17-73 S5: a language switch re-renders only the shipped-text settings of sidebar.yml (the
+     * {@code title} line and the {@code lines} list); a typo value and a hand-written comment elsewhere in the
+     * same file stay byte for byte. The two writes are measured one at a time: the framework's reload of the
+     * file under the new language ({@code reload()}) rewrites only its own comment lines, then {@code SideBarService#reload()}
+     * re-renders the texts and its save writes only those two settings (UltiKits/UltiTools-Reborn#611).
+     */
+    @Test
+    @DisplayName("a language switch re-renders only the title and lines; a typo value and a hand-written comment stay byte for byte")
+    void languageSwitchRewritesOnlyTheShippedTextLines() throws Exception {
+        language[0] = "zh";
+        SideBarConfig config = spy(load());
+        SideBarService service = start(config);
+        String started = new String(bytes(), StandardCharsets.UTF_8);
+        String edited = started.replaceFirst("(?m)^update-interval: 20$", "# Operator note: keep this\nupdate-interval: 2O");
+        assertThat(edited).as("the typo and the comment applied to:\n" + started).isNotEqualTo(started);
+        Files.write(file().toPath(), edited.getBytes(StandardCharsets.UTF_8));
+
+        language[0] = "en";
+        try (MockedStatic<Bukkit> bukkit = bukkit()) {
+            config.reload();
+        }
+        String afterComments = new String(bytes(), StandardCharsets.UTF_8);
+        try (MockedStatic<Bukkit> bukkit = bukkit()) {
+            service.reload();
+        }
+        String after = new String(bytes(), StandardCharsets.UTF_8);
+
+        // The framework's reload: comment lines only, never the operator's own comment.
+        String[] was = edited.split("\n", -1);
+        String[] then = afterComments.split("\n", -1);
+        assertThat(then.length).as("line count after the framework's reload:\n" + afterComments).isEqualTo(was.length);
+        int comments = 0;
+        for (int i = 0; i < was.length; i++) {
+            if (!was[i].equals(then[i])) {
+                assertThat(was[i].trim()).as("line " + (i + 1) + " changed by the framework's reload:\n" + afterComments)
+                        .startsWith("#").doesNotContain("Operator note");
+                assertThat(then[i].trim()).as("line " + (i + 1) + " is still a comment after the framework's reload").startsWith("#");
+                comments++;
+            }
+        }
+        assertThat(comments).as("the framework's comments followed the switch").isPositive();
+        // The module's save: the title line and the lines list, nothing else.
+        assertThat(withoutTitleAndLines(after)).as("everything but title and lines, after the module's save")
+                .isEqualTo(withoutTitleAndLines(afterComments));
+        assertThat(withoutTitleAndLines(after)).as("the operator's typo and comment")
+                .contains("# Operator note: keep this\nupdate-interval: 2O\n");
+        assertThat(onDisk().getString("title")).isEqualTo(title("en"));
+        assertThat(onDisk().getStringList("lines")).containsExactlyElementsOf(lines("en"));
+        verify(config, times(1)).save();
+    }
+
+    /** {@code text} without its top-level {@code title:} line and its top-level {@code lines:} list block. */
+    private static String withoutTitleAndLines(String text) {
+        StringBuilder kept = new StringBuilder();
+        boolean inLines = false;
+        int titles = 0;
+        int listBlocks = 0;
+        for (String line : text.split("\n", -1)) {
+            if (inLines && (line.startsWith("- ") || line.startsWith("  - ") || line.equals("-") || line.equals("  -"))) {
+                continue;
+            }
+            inLines = false;
+            if (line.startsWith("title: ")) {
+                titles++;
+                continue;
+            }
+            if (line.equals("lines:")) {
+                listBlocks++;
+                inLines = true;
+                continue;
+            }
+            kept.append(line).append('\n');
+        }
+        assertThat(titles).as("one title line in:\n" + text).isEqualTo(1);
+        assertThat(listBlocks).as("one lines block in:\n" + text).isEqualTo(1);
+        return kept.toString();
+    }
+
     @Test
     @DisplayName("the configuration change listener, which fires before the language is rebuilt, does not rewrite the text")
     void changeListenerDoesNotMaterialize() throws Exception {
@@ -507,8 +586,13 @@ class SideBarConfigTextTest {
         for (String code : LANGUAGES) {
             answers.put(code, CatalogueText.answer(code));
         }
-        return Mockito.mock(UltiToolsPlugin.class, invocation -> {
+        // The module's own class, so the framework's real shippedCatalogueTexts reads this module's catalogues
+        // from its code source, as on a server (framework #604, PR #611).
+        return Mockito.mock(com.ultikits.plugins.sidebar.UltiSideBar.class, invocation -> {
             String name = invocation.getMethod().getName();
+            if ("shippedCatalogueTexts".equals(name)) {
+                return invocation.callRealMethod();
+            }
             if ("getConfigFolder".equals(name)) {
                 return tempDir.toString();
             }

@@ -377,6 +377,7 @@ class SideBarServiceTest {
                 bukkitMock.when(Bukkit::getScoreboardManager).thenReturn(scoreboardManager);
                 when(scoreboardManager.getNewScoreboard()).thenReturn(scoreboard);
                 when(scoreboard.registerNewObjective(anyString(), anyString(), anyString())).thenReturn(objective);
+                when(scoreboard.getObjective("sidebar")).thenReturn(objective);
                 when(scoreboard.getEntries()).thenReturn(Collections.emptySet());
                 // init() reassigned service's dataOperator field to the plugin-supplied one, so
                 // the enabled-preference stub belongs on that query mock, not the original.
@@ -388,7 +389,8 @@ class SideBarServiceTest {
                 cacheField.setAccessible(true);
                 @SuppressWarnings("unchecked")
                 Map<UUID, List<String>> resultCache = (Map<UUID, List<String>>) cacheField.get(service);
-                assertThat(resultCache).doesNotContainKey(playerUuid);
+                // The stale entry went with the cleared cache; the re-created board's own lines took its place.
+                assertThat(resultCache.get(playerUuid)).containsExactly("Line 1", "Line 2");
                 // refreshAllSidebars() removed then re-created the scoreboard for the online player.
                 verify(player).setScoreboard(scoreboard);
             }
@@ -510,6 +512,8 @@ class SideBarServiceTest {
                 bukkitMock.when(Bukkit::getScoreboardManager).thenReturn(scoreboardManager);
                 when(scoreboardManager.getNewScoreboard()).thenReturn(scoreboard);
                 when(scoreboard.registerNewObjective(anyString(), anyString(), anyString())).thenReturn(objective);
+                when(scoreboard.getObjective("sidebar")).thenReturn(objective);
+                when(scoreboard.getObjective(DisplaySlot.SIDEBAR)).thenReturn(objective);
                 when(objective.getScore(anyString())).thenReturn(score);
                 when(scoreboard.getEntries()).thenReturn(Collections.emptySet());
 
@@ -810,8 +814,12 @@ class SideBarServiceTest {
         void skipWhenUnchanged() throws Exception {
             Scoreboard scoreboard = mock(Scoreboard.class);
             Objective objective = mock(Objective.class);
+            Score score = mock(Score.class);
             when(scoreboard.getObjective("sidebar")).thenReturn(objective);
+            when(scoreboard.getObjective(DisplaySlot.SIDEBAR)).thenReturn(objective);
             when(scoreboard.getEntries()).thenReturn(Collections.emptySet());
+            when(objective.getScore(anyString())).thenReturn(score);
+            when(score.isScoreSet()).thenReturn(true);
 
             Map<UUID, Scoreboard> scoreboards = new HashMap<>();
             scoreboards.put(playerUuid, scoreboard);
@@ -823,22 +831,33 @@ class SideBarServiceTest {
 
             service.updateSidebar(player);
 
-            // Should not clear scores since content is same
+            // Should not clear or write any score since content is same and every line still holds its score
             verify(scoreboard, never()).resetScores(anyString());
+            verify(score, never()).resetScore();
+            verify(score, never()).setScore(anyInt());
         }
 
         @Test
-        @DisplayName("Should do nothing when the tracked scoreboard has no 'sidebar' objective")
+        @DisplayName("Should register the 'sidebar' objective again, in the sidebar slot, when the tracked scoreboard has none (#30)")
         void noObjective() throws Exception {
             Scoreboard scoreboard = mock(Scoreboard.class);
+            Objective recreated = mock(Objective.class);
+            Score score = mock(Score.class);
             when(scoreboard.getObjective("sidebar")).thenReturn(null);
+            when(scoreboard.registerNewObjective(anyString(), anyString(), anyString())).thenReturn(recreated);
+            when(recreated.getScore(anyString())).thenReturn(score);
+            when(scoreboard.getEntries()).thenReturn(Collections.emptySet());
 
             Map<UUID, Scoreboard> scoreboards = new HashMap<>();
             scoreboards.put(playerUuid, scoreboard);
             UltiSideBarTestHelper.setField(service, "playerScoreboards", scoreboards);
 
             assertThatCode(() -> service.updateSidebar(player)).doesNotThrowAnyException();
-            verify(scoreboard, never()).getEntries();
+
+            verify(scoreboard).registerNewObjective(eq("sidebar"), eq("dummy"), anyString());
+            verify(recreated).setDisplaySlot(DisplaySlot.SIDEBAR);
+            verify(recreated, times(2)).getScore(anyString()); // "Line 1", "Line 2" from setUp()'s config
+            verify(scoreboard, never()).resetScores(anyString());
         }
 
         @Test
@@ -982,14 +1001,18 @@ class SideBarServiceTest {
         }
 
         @Test
-        @DisplayName("Should reset stale entries and rebuild the scoreboard when content actually changed")
+        @DisplayName("Should reset only this objective's stale entries and rebuild the lines when content actually changed (#30)")
         void rebuildsWhenContentChanged() throws Exception {
             Scoreboard scoreboard = mock(Scoreboard.class);
             Objective objective = mock(Objective.class);
             Score score = mock(Score.class);
+            Score oldScore = mock(Score.class);
             when(scoreboard.getObjective("sidebar")).thenReturn(objective);
-            when(scoreboard.getEntries()).thenReturn(new HashSet<>(Arrays.asList("Old entry")));
+            when(scoreboard.getObjective(DisplaySlot.SIDEBAR)).thenReturn(objective);
             when(objective.getScore(anyString())).thenReturn(score);
+            when(objective.getScore("Something entirely different")).thenReturn(oldScore);
+            when(oldScore.isScoreSet()).thenReturn(true);
+            when(score.isScoreSet()).thenReturn(true);
 
             Map<UUID, Scoreboard> scoreboards = new HashMap<>();
             scoreboards.put(playerUuid, scoreboard);
@@ -1001,9 +1024,10 @@ class SideBarServiceTest {
 
             service.updateSidebar(player);
 
-            verify(scoreboard).resetScores("Old entry");
-            verify(objective, times(2)).getScore(anyString()); // "Line 1", "Line 2" from setUp()'s config
-            verify(score, times(2)).setScore(anyInt());
+            // The old line is reset on this objective only, never board-wide
+            verify(oldScore).resetScore();
+            verify(scoreboard, never()).resetScores(anyString());
+            verify(score, times(2)).setScore(anyInt()); // "Line 1", "Line 2" from setUp()'s config
         }
 
         @Test
