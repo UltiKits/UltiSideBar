@@ -9,6 +9,17 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- `lines: []` (or `lines: ~`) in `config/sidebar.yml` no longer refuses the module. The setting is declared `@NotEmpty`, and
+  from UltiTools 6.3.0 the framework treats an empty value of such a list as unusable: the sidebar runs on the shipped 12
+  lines and the framework logs one WARNING naming `lines`, the value as written and that default. The file is left exactly as
+  you wrote it. The sidebar shows those lines in the server's language, like any built-in text, and the module no longer adds
+  a second WARNING ("the module's changes to 'lines' were not written") at every start and `/ul reload`, or a report of
+  unsaved changes when the server stops. More than 15 lines are still refused at load (UltiKits/UltiSideBar#36).
+- `config/sidebar.yml` 中的 `lines: []`（或 `lines: ~`）不再导致本模块被拒绝加载。该设置声明了 `@NotEmpty`，自 UltiTools 6.3.0
+  起框架把此类列表的空值视为不可用：侧边栏改用出厂的 12 行，框架记录一条 WARNING，写明 `lines`、你写下的值与该默认值。文件保持你写的
+  原样。侧边栏按服务器语言显示这些行（与其他内置文本相同），模块也不再在每次启动和 `/ul reload` 时额外记录一条“模块对 'lines'
+  的更改未写入”的 WARNING，服务器停止时也不再报告未保存的更改。超过 15 行仍会在加载时被拒绝（UltiKits/UltiSideBar#36）。
+
 - The sidebar's title and lines settings in `config/sidebar.yml` are written in the server's
   language when the module starts, and the file is what the sidebar shows (`title: '&6&lMy Server'`
   and English lines under `language: en`). A setting that is still built-in text — in any language,
