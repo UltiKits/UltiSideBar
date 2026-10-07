@@ -120,6 +120,21 @@ restart. This is by design: extra lines are neither dropped silently nor cut aut
 
 更多变量请参考 [PlaceholderAPI Wiki](https://github.com/PlaceholderAPI/PlaceholderAPI/wiki/Placeholders)
 
+## ⚠️ Known limitations / 已知限制
+
+**Deleting `title` or `lines` and then reloading.** Under `language: en` (any language whose built-in text differs from
+the Chinese Java default), if you delete the `title` or `lines` key from `config/sidebar.yml` and run `/ul reload
+UltiSideBar`, the log shows an extra "the module's changes to '...' were not written" WARNING for each reload, and the
+server-stop report names the key again. Nothing is lost and the file is never overwritten: the framework binds the
+default for the missing key but only inserts missing keys at start. Restart the server instead of reloading after
+deleting a key, and the extra lines stop (UltiKits/UltiSideBar#38).
+
+**删除 `title` 或 `lines` 后重载。** 在 `language: en`（内置文本与默认的中文 Java 默认值不同的任何语言）下，若从
+`config/sidebar.yml` 删除 `title` 或 `lines` 键并执行 `/ul reload UltiSideBar`，每次重载日志都会多出一条
+“模块对 '...' 的更改未写入”的 WARNING，服务器停止时的报告也会再次提到该键。不会丢失任何内容，文件也不会被覆盖：
+框架会为缺失的键绑定默认值，但只在启动时插入缺失的键。删除键后请重启服务器而不是重载，多余的日志行即会消失
+（UltiKits/UltiSideBar#38）。
+
 ## 📝 命令
 
 | 命令 | 描述 | 权限 |
