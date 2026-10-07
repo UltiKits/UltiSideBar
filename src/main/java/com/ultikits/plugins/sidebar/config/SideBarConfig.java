@@ -150,20 +150,21 @@ public class SideBarConfig extends AbstractConfigEntity {
     }
 
     /**
-     * Whether the file does not hold the lines this entity holds, which is the case when the framework replaced an empty
-     * list ({@code lines: []}, or {@code lines:} with no value) by the declared default. The file's own value is read
-     * from the document the framework last loaded ({@code toJsonObject()}); a file that has no {@code lines} entry in that
-     * document, or one that holds a single value rather than a list, is treated as holding what the entity holds.
+     * Whether the file does not hold the lines this entity holds, which is the case when the framework ran the declared
+     * default in place of a value it cannot use: an empty list ({@code lines: []}), no value ({@code lines:} or
+     * {@code ~}), or a value that is not a list ({@code ''}, a word, a map). The file's own value is read from the document
+     * the framework last loaded ({@code toJsonObject()}). A key the document lacks is treated as holding what the entity
+     * holds, unless it is present as a map (which {@code toJsonObject()} flattens into {@code lines.<key>} leaves).
      */
     private boolean linesAreFrameworkDefault() {
         if (lines == null) {
             return false;
         }
         JsonElement held = toJsonObject().get("lines");
-        if (held == null || !(held.isJsonNull() || held.isJsonArray())) {
-            return false;
+        if (held == null) {
+            return isPresentInFile("lines");
         }
-        if (held.isJsonNull()) {
+        if (!held.isJsonArray()) {
             return true;
         }
         JsonArray array = held.getAsJsonArray();
