@@ -156,6 +156,38 @@ class SideBarConfigEmptyLinesTest {
     }
 
     @Test
+    @DisplayName("lines the framework cannot read as a list ('', a word, a map): the default runs, one conversion WARNING, no 'not written', nothing unsaved")
+    void aValueThatIsNotAListIsTreatedLikeAnEmptyOne() throws Exception {
+        for (String code : LANGUAGES) {
+            for (String written : new String[] {"lines: ''", "lines: foo", "lines:\n  a: b"}) {
+                warnings.clear();
+                language[0] = code;
+                String what = "language " + code + ", " + written.replace("\n", " / ");
+                write(title(code), written);
+                SideBarConfig config = spy(load());
+
+                SideBarService service = start(config);
+
+                assertThat(config.getLines()).as(what + ": the language's lines are shown")
+                        .containsExactlyElementsOf(lines(code));
+                assertThat(only("were not written")).as(what + ": no 'not written' WARNING").isEmpty();
+                assertThat(warnings).as(what + ": the framework's one WARNING and nothing else").hasSize(1);
+                verify(config, never()).save();
+                assertThat(config.isModifiedSinceSnapshot()).as(what + ": nothing unsaved for the stop report").isFalse();
+                assertThat(Files.readAllLines(file().toPath(), StandardCharsets.UTF_8))
+                        .as(what + ": the operator's text is still in the file").contains(written.split("\n")[0]);
+
+                warnings.clear();
+                reload(config, service);
+
+                assertThat(only("were not written")).as(what + ": nor after /ul reload").isEmpty();
+                assertThat(warnings).as(what + ": one WARNING per reload").hasSize(1);
+                assertThat(config.isModifiedSinceSnapshot()).as(what + ": still nothing unsaved").isFalse();
+            }
+        }
+    }
+
+    @Test
     @DisplayName("lines: [] with the title still the earlier shipped text under en: the title is written and saved once, the lines stay unsaved and unwarned")
     void aWrittenTitleDoesNotDragTheSubstitutedLinesIntoTheSave() throws Exception {
         language[0] = "en";
@@ -273,10 +305,13 @@ class SideBarConfigEmptyLinesTest {
         return service;
     }
 
-    /** The framework's reload as it reaches this module: {@code init} again, then {@code SideBarService#reload()}. */
+    /**
+     * The framework's reload as it reaches this module: the real {@code AbstractConfigEntity#reload()} (the three-way
+     * merge, then the change listeners), then {@code SideBarService#reload()}, which {@code onReload()} calls.
+     */
     private void reload(SideBarConfig config, SideBarService service) throws Exception {
         try (MockedStatic<Bukkit> bukkit = bukkit()) {
-            config.init(plugin);
+            config.reload();
             service.reload();
         }
     }
