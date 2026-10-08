@@ -1,6 +1,6 @@
 # UltiSideBar
 
-[![UltiTools](https://img.shields.io/badge/UltiTools-6.0+-blue.svg)](https://github.com/UltiKits/UltiTools-Reborn)
+[![UltiTools](https://img.shields.io/badge/UltiTools--API-6.3.0%2B-blue.svg)](https://github.com/UltiKits/UltiTools-Reborn)
 [![Paper](https://img.shields.io/badge/Paper-1.19--1.21-green.svg)](https://papermc.io/)
 [![Java](https://img.shields.io/badge/Java-8+-orange.svg)](https://www.java.com/)
 
@@ -24,14 +24,14 @@ Runs on **Paper 1.19 or newer** only, like the UltiTools framework it is built o
 
 ### 前置依赖
 
-- **UltiTools-API** 6.0 或更高版本
+- **UltiTools-API** 6.3.0 或更高版本（本模块声明 `api-version: 630`，更早的框架会拒绝加载它）
 - **PlaceholderAPI** (可选，但强烈推荐)
 
 ### 安装步骤
 
 1. 下载 `UltiSideBar.jar`
 2. 将文件放入服务器的 `plugins/UltiTools/plugins/` 目录
-3. 重启服务器或执行 `/ultitools reload`
+3. 重启服务器（`/ul reload` 不会加载新的模块 JAR）
 4. 编辑 `plugins/UltiTools/UltiSideBar/config/sidebar.yml` 配置文件
 5. 执行 `/sidebar reload` 应用配置
 
