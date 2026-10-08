@@ -10,14 +10,18 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 
 - This version requires UltiTools 6.3.0 or later and declares `api-version: 630` in `plugin.yml`
-  (it was `621`). An older framework refuses the module before its start-up runs, with a warning
-  that the UltiTools version is outdated; the refusal names the module by its `plugin.yml` `name:`,
-  `UltiSideBar`. The README's framework minimum and badge now say UltiTools 6.3.0+, and its install
-  step says a server restart is needed to load a new module JAR (`/ul reload` does not load it)
-  (UltiKits/UltiTools-Reborn#544).
-- 本版本需要 UltiTools 6.3.0 或更高版本，并在 `plugin.yml` 中声明 `api-version: 630`（原为 `621`）。更早的框架会在模块的启动逻辑
-  运行之前拒绝加载它，并给出 UltiTools 版本过旧的警告；拒绝信息以 `plugin.yml` 的 `name:` 即 `UltiSideBar` 指代本模块。
-  README 中的框架最低版本与徽章已改为 UltiTools 6.3.0+，安装步骤也说明加载新的模块 JAR 需要重启服务器（`/ul reload` 不会加载）
+  (it was `621`; the last release, 1.0.0, declared `620`). Frameworks 6.2.1 to 6.2.5 accepted the old
+  `621`; they, like every earlier framework, now refuse the module at load with a warning containing
+  `UltiSideBar load failed` and `UltiTools version is outdated`, before the module's `registerSelf()`
+  (its start-up) runs. A class-loading error may be logged first. The README's framework minimum and
+  badges now say UltiTools 6.3.0+, Paper 1.21+ and Java 21+ (they said UltiTools 6.0+, Paper 1.19+ and
+  Java 8+), and its install step says a server restart is needed to load a new module JAR (`/ul reload`
+  does not load it) (UltiKits/UltiTools-Reborn#544).
+- 本版本需要 UltiTools 6.3.0 或更高版本，并在 `plugin.yml` 中声明 `api-version: 630`（原为 `621`；上一个发布版本 1.0.0
+  声明的是 `620`）。6.2.1 至 6.2.5 的框架此前接受旧的 `621`；现在它们与更早的框架一样，会在加载时、在模块的
+  `registerSelf()`（启动逻辑）运行之前拒绝本模块，警告中含 `UltiSideBar load failed` 与 `UltiTools version is outdated`，
+  之前可能先出现类加载错误。README 中的框架最低版本与徽章已改为 UltiTools 6.3.0+、Paper 1.21+、Java 21+
+  （原为 UltiTools 6.0+、Paper 1.19+、Java 8+），安装步骤也说明加载新的模块 JAR 需要重启服务器（`/ul reload` 不会加载）
   （UltiKits/UltiTools-Reborn#544）。
 - `plugin.yml` now declares `identify-string: ultisidebar`, the key of this module's entry in the
   UltiCloud catalogue. The framework's update check and `/upm update` skip a module that does not
