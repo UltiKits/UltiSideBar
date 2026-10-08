@@ -9,6 +9,24 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- `lines: []` (or `lines: ~`) in `config/sidebar.yml`, and a `lines` value that is not a list (`''`, a word, a map), now runs the
+  shipped 12 lines. The setting is declared `@NotEmpty`, and on UltiTools 6.3.0 the framework treats such a value as unusable: the
+  sidebar runs on the shipped lines and the framework logs one WARNING naming `lines`, the value as written and that default.
+  The file is left exactly as you wrote it. Earlier versions (UltiTools 6.2.x, UltiSideBar 1.0.0) reset `[]` to the default
+  with a warning and, for `~`, wrote the default into the file. The sidebar shows the shipped lines in the server's language,
+  like any built-in text, and the module adds no second WARNING ("the module's changes to 'lines' were not written") at
+  start or `/ul reload`, and no report of unsaved changes when the server stops (UltiKits/UltiSideBar#36).
+- `config/sidebar.yml` 中的 `lines: []`（或 `lines: ~`），以及不是列表的 `lines` 值（`''`、一个词、一个映射），现在改用出厂的 12 行。
+  该设置声明了 `@NotEmpty`，在 UltiTools 6.3.0 上框架把这类值视为不可用：侧边栏改用出厂行，框架记录一条 WARNING，写明 `lines`、
+  你写下的值与该默认值。文件保持你写的原样。早期版本（UltiTools 6.2.x、UltiSideBar 1.0.0）会把 `[]` 重置为默认值并给出警告，
+  `~` 则会把默认值写入文件。侧边栏按服务器语言显示出厂行（与其他内置文本相同），模块也不再在启动或 `/ul reload` 时额外记录
+  一条“模块对 'lines' 的更改未写入”的 WARNING，服务器停止时也不再报告未保存的更改（UltiKits/UltiSideBar#36）。
+- A `lines` list of more than 15 entries now refuses the module at load, naming the field, the count and the bounds
+  (`field 'lines' size 16 is out of bounds [1, 15]`), and the file is left as written. Earlier versions (UltiTools 6.2.x)
+  reset an over-long list to the default with a warning (UltiKits/UltiSideBar#31).
+- 超过 15 条的 `lines` 列表现在会在加载时拒绝本模块，并指出字段、条数与上限（`field 'lines' size 16 is out of bounds [1, 15]`），
+  文件保持原样。早期版本（UltiTools 6.2.x）会把过长的列表重置为默认值并给出警告（UltiKits/UltiSideBar#31）。
+
 - The sidebar's title and lines settings in `config/sidebar.yml` are written in the server's
   language when the module starts, and the file is what the sidebar shows (`title: '&6&lMy Server'`
   and English lines under `language: en`). A setting that is still built-in text — in any language,

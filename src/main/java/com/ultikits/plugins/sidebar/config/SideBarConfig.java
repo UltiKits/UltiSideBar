@@ -9,6 +9,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.ultikits.ultitools.abstracts.AbstractConfigEntity;
 import com.ultikits.ultitools.annotations.ConfigEntity;
 import com.ultikits.ultitools.annotations.ConfigEntry;
@@ -16,6 +18,7 @@ import com.ultikits.ultitools.annotations.config.NotEmpty;
 import com.ultikits.ultitools.annotations.config.Range;
 import com.ultikits.ultitools.annotations.config.Size;
 
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -49,6 +52,20 @@ public class SideBarConfig extends AbstractConfigEntity {
     @ConfigEntry(path = "lines", comment = "{sidebar_config_comment_lines}")
     private List<String> lines = new ArrayList<>(SHIPPED_LINES);
 
+    /**
+     * The language's own lines, shown by {@link #getLines()} in place of {@link #lines} while the framework holds the
+     * declared default there because the file's list is empty (see {@link #materializeText}); {@code null} otherwise.
+     * Not a setting: it is never read from or written to the file.
+     */
+    @Getter(AccessLevel.NONE)
+    @Setter(AccessLevel.NONE)
+    private List<String> shownInPlaceOfLines;
+
+    /** The value of {@link #lines} that {@link #shownInPlaceOfLines} stands in for; it stops applying when that changes. */
+    @Getter(AccessLevel.NONE)
+    @Setter(AccessLevel.NONE)
+    private List<String> shownInPlaceOfBaseline;
+
     @ConfigEntry(path = "world-blacklist", comment = "{sidebar_config_comment_world_blacklist}")
     private List<String> worldBlacklist = Collections.singletonList("world_event");
 
@@ -66,6 +83,19 @@ public class SideBarConfig extends AbstractConfigEntity {
     static final String LINES_KEY = "sidebar_default_lines";
 
     /**
+     * The lines to show: the {@code lines} setting, except while the framework runs the declared default in place of an
+     * empty list in the file, when they are that default in the server's language (see {@link #materializeText}).
+     *
+     * @return the lines the sidebar shows
+     */
+    public List<String> getLines() {
+        if (shownInPlaceOfLines != null && Objects.equals(lines, shownInPlaceOfBaseline)) {
+            return shownInPlaceOfLines;
+        }
+        return lines;
+    }
+
+    /**
      * Writes the title and lines in the server's language (maintainer decision 2026-09-25): first the
      * exact-match line fixes of {@link #migrateLegacyDefaultLines()}, then each of the two settings is
      * replaced with {@code text}'s current text when it is still built-in text -- the title or lines an
@@ -74,13 +104,24 @@ public class SideBarConfig extends AbstractConfigEntity {
      * Idempotent. Must run after the
      * module's language is loaded (enable and {@code onReload()}), never from a change listener; the
      * caller saves the file when this returns {@code true}.
+     * <p>
+     * {@code lines} is declared {@code @NotEmpty}, so when the operator's file holds an empty list ({@code []} or no value)
+     * the framework runs the declared default in memory, warns once and leaves the file alone (UltiTools 6.3.0,
+     * UltiKits/UltiTools-Reborn#630). That default is not what the file holds, so it is never rewritten here and never
+     * saved: the framework would decline the write, warn again at every start and reload, and report the unsaved change at
+     * stop. The language's lines are shown instead through {@link #getLines()} while the field keeps the default.
+     * <p>
+     * Why this cannot overwrite operator content: nothing here writes a value the file does not already hold. A change
+     * is returned (so the caller saves) only for a title or a list that the file itself holds as built-in text.
      *
      * @param text catalogue key to text in the server's language, from this jar's own catalogue
      *             ({@code ConfigTextDefaults#jarLanguage}), so every value written is in the tracked set
-     * @return {@code true} if at least one value was rewritten
+     * @return {@code true} if at least one value was rewritten and is to be saved
      */
     public boolean materializeText(Function<String, String> text) {
-        boolean changed = migrateLegacyDefaultLines();
+        // Before the legacy-line fix: that fix changes the field, and the comparison is with what the file held.
+        boolean substituted = linesAreFrameworkDefault();
+        boolean changed = !substituted && migrateLegacyDefaultLines();
         Map<String, Map<String, String>> jar = ConfigTextDefaults.jarCatalogues(SideBarConfig.class);
 
         String newTitle = ConfigTextDefaults.materialize(SideBarConfig.class, "title", title,
@@ -94,11 +135,50 @@ public class SideBarConfig extends AbstractConfigEntity {
         List<String> newLines = ConfigTextDefaults.materializeLines(SideBarConfig.class, "lines", lines,
                 ConfigTextDefaults.currentLines(text, LINES_KEY),
                 ConfigTextDefaults.trackedLines(jar, LINES_KEY, SHIPPED_LINES_FIRST, SHIPPED_LINES_SECOND, SHIPPED_LINES));
-        if (!Objects.equals(newLines, lines)) {
-            lines = newLines;
-            changed = true;
+        if (substituted) {
+            shownInPlaceOfBaseline = new ArrayList<>(lines);
+            shownInPlaceOfLines = Objects.equals(newLines, lines) ? null : newLines;
+        } else {
+            shownInPlaceOfBaseline = null;
+            shownInPlaceOfLines = null;
+            if (!Objects.equals(newLines, lines)) {
+                lines = newLines;
+                changed = true;
+            }
         }
         return changed;
+    }
+
+    /**
+     * Whether the file does not hold the lines this entity holds, which is the case when the framework ran the declared
+     * default in place of a value it cannot use: an empty list ({@code lines: []}), no value ({@code lines:} or
+     * {@code ~}), or a value that is not a list ({@code ''}, a word, a map). The file's own value is read from the document
+     * the framework last loaded ({@code toJsonObject()}). A key the document lacks is treated as holding what the entity
+     * holds, unless it is present as a map (which {@code toJsonObject()} flattens into {@code lines.<key>} leaves).
+     */
+    private boolean linesAreFrameworkDefault() {
+        if (lines == null) {
+            return false;
+        }
+        JsonElement held = toJsonObject().get("lines");
+        if (held == null) {
+            return isPresentInFile("lines");
+        }
+        if (!held.isJsonArray()) {
+            return true;
+        }
+        JsonArray array = held.getAsJsonArray();
+        if (array.size() != lines.size()) {
+            return true;
+        }
+        for (int i = 0; i < array.size(); i++) {
+            JsonElement element = array.get(i);
+            String value = element.isJsonPrimitive() ? element.getAsString() : null;
+            if (!Objects.equals(value, lines.get(i))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
