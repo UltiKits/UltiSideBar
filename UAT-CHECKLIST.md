@@ -61,6 +61,12 @@ real-machine verification, not user-facing documentation.
   an untranslated literal. Every row whose Expected quotes a literal chat/console line therefore
   carries the precondition `language: en` set in `plugins/UltiTools/config.yml`, so the observed
   line matches this document's English-only text exactly.
+- **Console lines carry the module-logger prefix.** Every line this module logs reaches the console as
+  `[UltiTools] [UltiSideBar] <text>`: Paper adds `[UltiTools] `, and the framework's module logger (`PluginLogger`)
+  adds `[UltiSideBar] ` (this module's `plugin.yml` `name`). A console line quoted below is the `<text>` after both
+  prefixes, character for character, unless the row quotes a prefix itself; a row that counts or excludes this
+  module's console lines means lines carrying `[UltiSideBar]`. A line the framework logs is quoted after Paper's
+  prefix, with its own `[UltiTools-API] ` where the row shows it.
 
 ## Sidebar Commands
 
