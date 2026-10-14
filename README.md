@@ -30,12 +30,12 @@ Requires **UltiTools-API 6.3.0 or later**; an older framework refuses to load th
 1. 下载 `UltiSideBar.jar`
 2. 将文件放入服务器的 `plugins/UltiTools/plugins/` 目录
 3. 重启服务器（`/ul reload` 不会加载新的模块 JAR）
-4. 编辑 `plugins/UltiTools/UltiSideBar/config/sidebar.yml` 配置文件
+4. 编辑 `plugins/UltiTools/pluginConfig/UltiSideBar/config/sidebar.yml` 配置文件
 5. 执行 `/sidebar reload` 应用配置
 
 ## ⚙️ 配置
 
-配置文件位于 `plugins/UltiTools/UltiSideBar/config/sidebar.yml`
+配置文件位于 `plugins/UltiTools/pluginConfig/UltiSideBar/config/sidebar.yml`
 
 ```yaml
 # 启用侧边栏
