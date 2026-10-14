@@ -1,12 +1,10 @@
 # UltiSideBar
 
 [![UltiTools](https://img.shields.io/badge/UltiTools--API-6.3.0%2B-blue.svg)](https://github.com/UltiKits/UltiTools-Reborn)
-[![Paper](https://img.shields.io/badge/Paper-1.21%2B-green.svg)](https://papermc.io/)
-[![Java](https://img.shields.io/badge/Java-21%2B-orange.svg)](https://adoptium.net/)
 
-Supported on **Paper 1.21 or newer with Java 21**, the platform UltiTools 6.3.0 targets. Spigot is not supported; below Paper 1.19 the framework cannot load at all (it declares Bukkit `api-version: 1.19`).
+Requires **UltiTools-API 6.3.0 or later**; an older framework refuses to load this module (it declares `api-version: 630`).
 
-支持 **Paper 1.21 及以上、Java 21**，即 UltiTools 6.3.0 的目标平台。不支持 Spigot；Paper 1.19 以下框架根本无法加载（框架声明 Bukkit `api-version: 1.19`）。
+需要 **UltiTools-API 6.3.0 或更高版本**；更早的框架会拒绝加载本模块（本模块声明 `api-version: 630`）。
 
 一个功能强大的 Minecraft 服务器侧边栏插件，基于 UltiTools-API 框架开发，支持 PlaceholderAPI 变量和玩家偏好持久化。
 
