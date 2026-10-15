@@ -52,13 +52,13 @@ lines:
   - "&7欢迎, &f%player_name%"
   - ""
   - "&e在线人数: &f%server_online%/%server_max_players%"
-  - "&e世界: &f%world_name%"
+  - "&e世界: &f%player_world%"
   - ""
   - "&e金币: &f%vault_eco_balance_formatted%"
   - "&ePing: &f%player_ping%ms"
   - ""
   - "&7服务器时间"
-  - "&f%server_time_hh:mm:ss%"
+  - "&f%server_time_HH:mm:ss%"
   - ""
   - "&6play.example.com"
 
@@ -111,10 +111,10 @@ restart. This is by design: extra lines are neither dropped silently nor cut aut
 | `%server_online%` | 在线人数 |
 | `%server_max_players%` | 最大人数 |
 | `%server_tps%` | 服务器 TPS |
-| `%world_name%` | 当前世界名 |
+| `%player_world%` | 当前世界名 |
 | `%vault_eco_balance%` | 玩家余额 |
 | `%vault_eco_balance_formatted%` | 格式化余额 |
-| `%server_time_hh:mm:ss%` | 服务器时间 |
+| `%server_time_HH:mm:ss%` | 服务器时间（24 小时制） |
 
 更多变量请参考 [PlaceholderAPI Wiki](https://github.com/PlaceholderAPI/PlaceholderAPI/wiki/Placeholders)
 
