@@ -5,24 +5,17 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 本文件记录本项目的所有重要更改，格式基于 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)。
 
-## [Unreleased]
+## [2.0.0] - 2026-10-21
 
 ### Changed
 
-- This version requires UltiTools 6.3.0 or later and declares `api-version: 630` in `plugin.yml`
-  (it was `621`; the last release, 1.0.0, declared `620`). Frameworks 6.2.1 to 6.2.5 accepted the old
-  `621`; they, like every earlier framework, now refuse the module at load with a warning containing
-  `UltiSideBar load failed` and `UltiTools version is outdated`, before the module's `registerSelf()`
-  (its start-up) runs. A class-loading error may be logged first. The README's framework minimum and
-  badges now say UltiTools 6.3.0+, Paper 1.21+ and Java 21+ (they said UltiTools 6.0+, Paper 1.19+ and
-  Java 8+), and its install step says a server restart is needed to load a new module JAR (`/ul reload`
-  does not load it) (UltiKits/UltiTools-Reborn#544).
-- 本版本需要 UltiTools 6.3.0 或更高版本，并在 `plugin.yml` 中声明 `api-version: 630`（原为 `621`；上一个发布版本 1.0.0
-  声明的是 `620`）。6.2.1 至 6.2.5 的框架此前接受旧的 `621`；现在它们与更早的框架一样，会在加载时、在模块的
-  `registerSelf()`（启动逻辑）运行之前拒绝本模块，警告中含 `UltiSideBar load failed` 与 `UltiTools version is outdated`，
-  之前可能先出现类加载错误。README 中的框架最低版本与徽章已改为 UltiTools 6.3.0+、Paper 1.21+、Java 21+
-  （原为 UltiTools 6.0+、Paper 1.19+、Java 8+），安装步骤也说明加载新的模块 JAR 需要重启服务器（`/ul reload` 不会加载）
-  （UltiKits/UltiTools-Reborn#544）。
+- This version requires UltiTools-API 6.3.0 or later and raises `api-version` in `plugin.yml` from
+  `620` in the last release, 1.0.0, to `630`. Older frameworks refuse to load this module before its
+  start-up logic runs. Restart the server to load a new module JAR; `/ul reload` does not load it
+  (UltiKits/UltiTools-Reborn#544).
+- 本版本需要 UltiTools-API 6.3.0 或更高版本，并将 `plugin.yml` 中的 `api-version` 从上一个发布版本 1.0.0
+  的 `620` 提升到 `630`。更早的框架会在模块启动逻辑运行之前拒绝加载本模块。加载新的模块 JAR 需要重启服务器；
+  `/ul reload` 不会加载它（UltiKits/UltiTools-Reborn#544）。
 - `plugin.yml` now declares `identify-string: ultisidebar`, the key of this module's entry in the
   UltiCloud catalogue. The framework's update check and `/upm update` skip a module that does not
   declare it, so this module now takes part in both: a later published version carrying the same key
@@ -89,13 +82,16 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   （UltiKits/UltiSideBar#30）。
 - Two sidebar lines that differ only after their 40th character now both show; previously the second
   one replaced the first (UltiKits/UltiSideBar#17).
-- The sidebar no longer replaces another plugin's sidebar (such as UltiEssentials' scoreboard): whichever
-  sidebar a player sees first stays, and this one appears once the other is turned off. `/sidebar on`
+- The sidebar now yields to another plugin's private scoreboard (such as UltiEssentials' scoreboard):
+  that board stays on screen, and this sidebar appears once the player returns to the main scoreboard.
+  A sidebar on the main scoreboard (including one set with vanilla commands) is still replaced, as in
+  earlier versions. `/sidebar on`
   and `/sidebar toggle` now say when another scoreboard keeps the slot (the choice is still saved), and
   `/sidebar off` no longer removes another plugin's sidebar. When UltiEssentials' sidebar is also
   enabled, one console line says so after start-up (UltiKits/UltiSideBar#26).
-- 侧边栏不再顶替其它插件的侧边栏（例如 UltiEssentials 的计分板）：玩家先看到哪个侧边栏就保留哪个，另一个关闭后
-  本侧边栏才显示。`/sidebar on` 与 `/sidebar toggle` 在另一个计分板占用该位置时会如实说明（选择仍会保存），
+- 侧边栏现在会对其它插件的私有计分板（例如 UltiEssentials 的计分板）让路：该计分板保持显示，玩家回到主计分板后
+  本侧边栏才显示。主计分板上的侧边栏（包括用原版命令设置的侧边栏）仍会被顶替，与以往版本一致。
+  `/sidebar on` 与 `/sidebar toggle` 在另一个计分板占用该位置时会如实说明（选择仍会保存），
   `/sidebar off` 也不再移除其它插件的侧边栏。UltiEssentials 的侧边栏同时开启时，启动后控制台会有一行提示
   （UltiKits/UltiSideBar#26）。
 - Name prefixes and other main-scoreboard teams (UltiEssentials name prefixes, vanilla `/team` teams,
