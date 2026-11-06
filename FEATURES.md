@@ -92,11 +92,13 @@ repositories.
 **Positive control:** the line-start form returns `@CmdExecutor` = 1, `@CmdMapping` = 5,
 `@EventListener` = 1 (class), `@EventHandler` = 3 (handler methods), `@Scheduled` = 0,
 `@ConditionalOnConfig` = 0, `@ConfigEntity` = 1 (class), `@ConfigEntry` = 6, `@Table` = 1 —
-confirmed by reading `SideBarCommand.java` directly (5 `@CmdMapping` sites at lines 36, 47, 54, 61,
-67: `toggle`, `on`, `off`, `reload`, `` [bare]), `SideBarListener.java` (3 `@EventHandler` sites at
-lines 25, 30, 35: `onPlayerJoin`, `onPlayerQuit`, `onWorldChange`), `SideBarConfig.java` (6
-`@ConfigEntry` sites at lines 31, 36, 40, 45, 61, 64), and `SideBarPreference.java` (1 `@Table`
-site at line 23) directly, not by trusting the count alone. This document's command-row count
+confirmed by reading the source directly: 5 `@CmdMapping` sites on `SideBarCommand#toggle`,
+`SideBarCommand#on`, `SideBarCommand#off`, `SideBarCommand#reload` and `SideBarCommand#help`
+(empty format, bare command); 3 `@EventHandler` sites on `SideBarListener#onPlayerJoin`,
+`SideBarListener#onPlayerQuit` and `SideBarListener#onWorldChange`; 6 `@ConfigEntry` sites on
+`SideBarConfig#enabled`, `SideBarConfig#title`, `SideBarConfig#updateInterval`, `SideBarConfig#lines`,
+`SideBarConfig#worldBlacklist` and `SideBarConfig#defaultEnabled`; and 1 `@Table` site on
+`SideBarPreference`, not by trusting the count alone. This document's command-row count
 matches the `@CmdMapping` annotation-site count exactly (5 against 5); its event-row count is 4
 against 3 handler methods, because `onWorldChange` implements two independently observable
 behaviours (see `## Sidebar Lifecycle Events` below), with the reason stated once here and in the
@@ -118,7 +120,7 @@ raw-key fallback.
 **Note on bare `/sidebar` and `/sidebar help`:** `BaseCommandExecutor#onCommand` short-circuits a
 literal `help` argument to `SideBarCommand#handleHelp` before format-matching runs, and
 `handleHelp` simply delegates to `help(sender)` — the same method the real, empty-format
-`@CmdMapping(format = "")` mapping (line 67) calls for a bare `/sidebar`. Both paths produce
+`@CmdMapping(format = "")` mapping on `SideBarCommand#help` calls for a bare `/sidebar`. Both paths produce
 identical output; this document's command-row count is fixed at exactly 5 (matching the 5 real
 `@CmdMapping` sites 1:1), with no added short-circuit-only row, the same deliberate scope decision
 `Modules/UltiMenu/FEATURES.md` and `Modules/UltiChat/FEATURES.md` record for their own `help`
