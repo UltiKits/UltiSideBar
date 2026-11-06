@@ -11,10 +11,12 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - This version requires UltiTools-API 6.3.0 or later and raises `api-version` in `plugin.yml` from
   `620` in the last release, 1.0.0, to `630`. Older frameworks refuse to load this module before its
-  start-up logic runs. Restart the server to load a new module JAR; `/ul reload` does not load it
+  start-up logic runs. Upgrade UltiTools to 6.3.0 or later before replacing this module's JAR.
+  Restart the server to load a new module JAR; `/ul reload` does not load it
   (UltiKits/UltiTools-Reborn#544).
 - 本版本需要 UltiTools-API 6.3.0 或更高版本，并将 `plugin.yml` 中的 `api-version` 从上一个发布版本 1.0.0
-  的 `620` 提升到 `630`。更早的框架会在模块启动逻辑运行之前拒绝加载本模块。加载新的模块 JAR 需要重启服务器；
+  的 `620` 提升到 `630`。更早的框架会在模块启动逻辑运行之前拒绝加载本模块。请先将 UltiTools 升级到 6.3.0 或更高版本，再替换本模块的 JAR。
+  加载新的模块 JAR 需要重启服务器；
   `/ul reload` 不会加载它（UltiKits/UltiTools-Reborn#544）。
 - `plugin.yml` now declares `identify-string: ultisidebar`, the key of this module's entry in the
   UltiCloud catalogue. The framework's update check and `/upm update` skip a module that does not
