@@ -31,8 +31,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * The config text materializer: which values count as built-in text, how a list is compared, and
- * where the jar's own texts are read from. Module-independent; every module carries this file
- * unchanged except the package line.
+ * where the jar's own texts are read from. Module tests are maintained separately; shared properties
+ * do not imply byte-identical copies.
  */
 @DisplayName("ConfigTextDefaults")
 class ConfigTextDefaultsTest {
