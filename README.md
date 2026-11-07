@@ -77,6 +77,51 @@ default-enabled: true
 field `lines`, the number of lines written and the limit `[1, 15]`; the file is not rewritten. Reduce it to 15 lines or fewer and
 restart. This is by design: extra lines are neither dropped silently nor cut automatically.
 
+### Custom translations / 自定义翻译
+
+UltiSideBar's language files are in `plugins/UltiTools/pluginConfig/UltiSideBar/lang/`.
+To customise command and status messages:
+
+1. Copy `lang/zh.yml` to `lang/zh-myserver.yml` **in that same module folder**, keeping the `.yml`
+   extension (or copy `lang/en.yml` to `lang/en-myserver.yml` for an English base).
+2. Edit the copy, keeping message keys and formatting placeholders unchanged.
+3. Set `language: zh-myserver` (or `language: en-myserver`) in `plugins/UltiTools/config.yml`, then run
+   a bare `/ul reload` or restart the server. This is the framework-wide language setting, not a
+   per-module setting; `/sidebar reload` and `/ul reload UltiSideBar` do not apply a changed setting.
+
+Do not edit the official `lang/zh.yml` or `lang/en.yml` in place: UltiTools restores differing official
+files from the bundled version at every start, and restores the official language in use on module
+reload. An edited file is kept as a `.bak` backup (then `.1.bak`, `.2.bak`, etc.) with a warning; use
+that backup to recover edits into a custom copy. Custom-named copies are never overwritten by the framework.
+
+Missing messages in `zh-myserver` come from official `zh`; those in `en-myserver` come from official
+`en`. A safe custom name without an official-code-and-hyphen prefix, such as `ja`, is still read, but
+missing messages fall back to English with one warning per module. Names must start with an ASCII
+letter or digit and contain only ASCII letters, digits, `_` or `-`; unsafe names are not read.
+
+Sidebar `title` and `lines` are customised in `config/sidebar.yml`, not in a language file: their
+built-in defaults come from the module JAR, not the custom copy.
+
+语言文件位于 `plugins/UltiTools/pluginConfig/UltiSideBar/lang/`。自定义命令和状态提示时：
+
+1. 在**本模块的同一目录**内，将 `lang/zh.yml` 复制为 `lang/zh-myserver.yml`，保留 `.yml` 扩展名；
+   英文可将 `lang/en.yml` 复制为 `lang/en-myserver.yml`。
+2. 只编辑副本中的译文，保留消息键和格式占位符。
+3. 在 `plugins/UltiTools/config.yml` 设置 `language: zh-myserver`（或 `language: en-myserver`），
+   再执行不带模块名的 `/ul reload` 或重启服务器。这是框架全局语言设置，不是单模块设置；
+   `/sidebar reload` 和 `/ul reload UltiSideBar` 不会应用已修改的语言设置。
+
+不要直接编辑官方 `lang/zh.yml` 或 `lang/en.yml`：每次启动时，与 JAR 不同的官方文件都会恢复为内置版本，
+模块重载时也会恢复当前使用的官方语言文件。编辑过的内容会保留在 `.bak`（之后为 `.1.bak`、`.2.bak` 等）
+备份中，并有警告提示；可从备份将修改恢复到自定义副本。框架不会覆盖自定义命名的副本。
+
+`zh-myserver` 缺失的消息回退到官方 `zh`，`en-myserver` 回退到官方 `en`。`ja` 这类安全但不以官方语言代码
+加连字符开头的名称仍会读取，但缺失消息回退到英文，每个模块记录一次警告。名称必须以 ASCII 字母或数字开头，
+且只能包含 ASCII 字母、数字、`_` 或 `-`；不安全的名称不会读取。
+
+侧边栏的 `title` 和 `lines` 请在 `config/sidebar.yml` 中自定义，不要在语言文件中修改；
+它们的内置默认值来自模块 JAR，不来自自定义副本。
+
 ### 颜色代码
 
 使用 `&` 符号加颜色代码：
